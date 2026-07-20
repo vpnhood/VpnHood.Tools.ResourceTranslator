@@ -57,8 +57,11 @@ public sealed class ResxResourceFormatTests
         Assert.AreEqual("en", format.GetLanguageCode("/x/Strings.resx"));
         Assert.AreEqual("fr", format.GetLanguageCode("/x/Strings.fr.resx"));
         Assert.AreEqual("de-DE", format.GetLanguageCode("/x/My.App.de-DE.resx"));
-        // A dotted resource name whose last segment is not a culture stays neutral.
+        // A dotted resource name whose last segment is not a culture stays neutral. ICU-based
+        // platforms will invent a culture for any plausible-looking name, so short segments
+        // like "Api" have to be rejected too, not just obviously-wrong ones like "Resources".
         Assert.AreEqual("en", format.GetLanguageCode("/x/My.Resources.resx"));
+        Assert.AreEqual("en", format.GetLanguageCode("/x/My.Api.resx"));
     }
 
     [TestMethod]

@@ -228,17 +228,18 @@ public class ResxResourceFormat : IResourceFormat
         return false;
     }
 
+    // Windows (NLS) throws for an unknown culture name, but Linux and macOS (ICU) happily
+    // fabricate one, which would read "My.Resources.resx" as culture "Resources". Matching
+    // against the platform's known cultures behaves identically everywhere.
+    private static readonly HashSet<string> KnownCultureNames = CultureInfo
+        .GetCultures(CultureTypes.AllCultures)
+        .Select(culture => culture.Name)
+        .Where(name => !string.IsNullOrEmpty(name))
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
     private static bool IsValidCulture(string candidate)
     {
-        if (string.IsNullOrEmpty(candidate))
-            return false;
-        try {
-            // Reject e.g. "Resources"; accept "en", "fr", "de-DE", "zh-Hans".
-            var ci = CultureInfo.GetCultureInfo(candidate);
-            return !ci.Equals(CultureInfo.InvariantCulture);
-        }
-        catch (CultureNotFoundException) {
-            return false;
-        }
+        // Rejects e.g. "Resources" and "App"; accepts "en", "fr", "de-DE", "zh-Hans".
+        return !string.IsNullOrEmpty(candidate) && KnownCultureNames.Contains(candidate);
     }
 }

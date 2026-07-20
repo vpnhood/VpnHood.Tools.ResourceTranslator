@@ -10,7 +10,7 @@
 	  Never add one to an individual csproj either — it overrides this and ships a stale number.
 	-->
 	<PropertyGroup>
-		<Version>1.1.1</Version>
+		<Version>1.1.2</Version>
 	</PropertyGroup>
 
 	<!-- Language / compiler settings shared by every project in the repo. -->

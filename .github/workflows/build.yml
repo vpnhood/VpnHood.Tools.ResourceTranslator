@@ -1,5 +1,7 @@
 name: Build
 
+# Continuous integration for main and pull requests: answers "is main healthy?".
+# Releasing is a separate, tag-triggered concern — see publish.yml.
 on:
   push:
     branches: [main]
@@ -12,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
 
@@ -25,15 +27,13 @@ jobs:
       - name: Build
         run: dotnet build VpnHood.Tools.ResourceTranslator.slnx --configuration Release --no-restore
 
+      # Linux runs on ICU while Windows dev machines may not, so platform-specific
+      # behaviour only shows up here. Do not assume a local pass means CI passes.
       - name: Test
         run: dotnet test VpnHood.Tools.ResourceTranslator.slnx --configuration Release --no-build
 
-      # Proves the tool still packages cleanly before anyone tags a release.
+      # Smoke test only: proves the package still builds (license expression, README,
+      # tool manifest) before anyone tags a release. The output is intentionally not
+      # uploaded — the only package that matters is the one publish.yml pushes.
       - name: Pack
         run: dotnet pack src/VpnHood.Tools.ResourceTranslator/VpnHood.Tools.ResourceTranslator.csproj --configuration Release --no-build --output ./artifacts
-
-      - name: Upload package artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: nupkg
-          path: ./artifacts/*.nupkg

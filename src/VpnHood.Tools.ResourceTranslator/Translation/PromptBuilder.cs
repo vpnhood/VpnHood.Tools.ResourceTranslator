@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 
-namespace VpnHood.ResourceTranslator.Translation;
+namespace VpnHood.Tools.ResourceTranslator.Translation;
 
 /// <summary>
 /// Builds the system and user prompts sent to the AI engines. The models are asked for a bare

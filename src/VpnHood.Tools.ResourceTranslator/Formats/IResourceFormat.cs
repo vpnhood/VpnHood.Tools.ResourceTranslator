@@ -1,6 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 
-namespace VpnHood.ResourceTranslator.Formats;
+namespace VpnHood.Tools.ResourceTranslator.Formats;
 
 public interface IResourceFormat
 {

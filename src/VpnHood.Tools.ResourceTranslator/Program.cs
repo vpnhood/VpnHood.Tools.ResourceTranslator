@@ -1,8 +1,8 @@
 using System.CommandLine;
 using System.Text;
-using VpnHood.ResourceTranslator.Cli;
+using VpnHood.Tools.ResourceTranslator.Cli;
 
-namespace VpnHood.ResourceTranslator;
+namespace VpnHood.Tools.ResourceTranslator;
 
 internal static class Program
 {

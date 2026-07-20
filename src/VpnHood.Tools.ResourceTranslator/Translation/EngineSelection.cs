@@ -1,4 +1,4 @@
-namespace VpnHood.ResourceTranslator.Translation;
+namespace VpnHood.Tools.ResourceTranslator.Translation;
 
 /// <summary>
 /// The engine/model pair resolved from user input and defaults.

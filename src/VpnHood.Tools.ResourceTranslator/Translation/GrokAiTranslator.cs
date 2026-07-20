@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
-namespace VpnHood.ResourceTranslator.Translation;
+namespace VpnHood.Tools.ResourceTranslator.Translation;
 
 internal sealed class GrokAiTranslator(
     string apiKey,

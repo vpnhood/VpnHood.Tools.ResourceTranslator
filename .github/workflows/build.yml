@@ -20,17 +20,17 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore VpnHood.ResourceTranslator.slnx
+        run: dotnet restore VpnHood.Tools.ResourceTranslator.slnx
 
       - name: Build
-        run: dotnet build VpnHood.ResourceTranslator.slnx --configuration Release --no-restore
+        run: dotnet build VpnHood.Tools.ResourceTranslator.slnx --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test VpnHood.ResourceTranslator.slnx --configuration Release --no-build
+        run: dotnet test VpnHood.Tools.ResourceTranslator.slnx --configuration Release --no-build
 
       # Proves the tool still packages cleanly before anyone tags a release.
       - name: Pack
-        run: dotnet pack src/VpnHood.ResourceTranslator/VpnHood.ResourceTranslator.csproj --configuration Release --no-build --output ./artifacts
+        run: dotnet pack src/VpnHood.Tools.ResourceTranslator/VpnHood.Tools.ResourceTranslator.csproj --configuration Release --no-build --output ./artifacts
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v4

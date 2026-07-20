@@ -1,4 +1,4 @@
-namespace VpnHood.ResourceTranslator.Tests;
+namespace VpnHood.Tools.ResourceTranslator.Tests;
 
 /// <summary>A throwaway directory that cleans itself up, for tests that touch the file system.</summary>
 public sealed class TestWorkspace : IDisposable

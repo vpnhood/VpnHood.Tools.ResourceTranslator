@@ -4,7 +4,7 @@ using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 
-namespace VpnHood.ResourceTranslator.Formats;
+namespace VpnHood.Tools.ResourceTranslator.Formats;
 
 /// <summary>
 /// Reads and writes Microsoft .resx resource files. String entries are translated;

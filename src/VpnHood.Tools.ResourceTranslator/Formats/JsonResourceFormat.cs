@@ -3,7 +3,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace VpnHood.ResourceTranslator.Formats;
+namespace VpnHood.Tools.ResourceTranslator.Formats;
 
 public class JsonResourceFormat : IResourceFormat
 {

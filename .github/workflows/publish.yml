@@ -2,6 +2,11 @@ name: Publish
 
 # Tag a release to publish, e.g.:
 #   git tag v1.1.0 && git push origin v1.1.0
+#
+# Publishing uses nuget.org Trusted Publishing (OIDC) — there is no long-lived API key.
+# The trusted publishing policy on nuget.org is bound to THIS FILE'S NAME (publish.yml)
+# plus the owner/repo, so renaming or moving this file breaks publishing until the policy
+# is updated to match.
 on:
   push:
     tags: ['v*.*.*']
@@ -16,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write # lets this job request the GitHub OIDC token nuget.org validates
 
     steps:
       - uses: actions/checkout@v4
@@ -38,23 +44,29 @@ jobs:
           echo "Publishing version $VERSION"
 
       - name: Build
-        run: dotnet build VpnHood.ResourceTranslator.slnx --configuration Release
+        run: dotnet build VpnHood.Tools.ResourceTranslator.slnx --configuration Release
 
       - name: Test
-        run: dotnet test VpnHood.ResourceTranslator.slnx --configuration Release --no-build
+        run: dotnet test VpnHood.Tools.ResourceTranslator.slnx --configuration Release --no-build
 
       - name: Pack
         run: >
-          dotnet pack src/VpnHood.ResourceTranslator/VpnHood.ResourceTranslator.csproj
+          dotnet pack src/VpnHood.Tools.ResourceTranslator/VpnHood.Tools.ResourceTranslator.csproj
           --configuration Release
           -p:Version=${{ steps.version.outputs.version }}
           --output ./artifacts
 
+      # Exchange the GitHub OIDC token for a temporary nuget.org key. It is valid for one
+      # hour and single-use, so this runs immediately before the push rather than earlier.
+      - name: NuGet login (OIDC)
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: ${{ secrets.NUGET_USER }} # nuget.org profile name, not an email address
+
       - name: Push to NuGet
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: >
           dotnet nuget push "./artifacts/*.nupkg"
-          --api-key "$NUGET_API_KEY"
+          --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}"
           --source https://api.nuget.org/v3/index.json
           --skip-duplicate

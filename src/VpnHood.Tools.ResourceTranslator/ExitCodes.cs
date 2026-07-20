@@ -1,4 +1,4 @@
-namespace VpnHood.ResourceTranslator;
+namespace VpnHood.Tools.ResourceTranslator;
 
 /// <summary>
 /// Process exit codes. Values are part of the tool's contract with CI scripts, so they are

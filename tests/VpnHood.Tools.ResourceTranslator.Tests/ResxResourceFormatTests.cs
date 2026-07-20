@@ -1,7 +1,7 @@
 using System.Xml.Linq;
-using VpnHood.ResourceTranslator.Formats;
+using VpnHood.Tools.ResourceTranslator.Formats;
 
-namespace VpnHood.ResourceTranslator.Tests;
+namespace VpnHood.Tools.ResourceTranslator.Tests;
 
 [TestClass]
 public sealed class ResxResourceFormatTests

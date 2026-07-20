@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace VpnHood.ResourceTranslator.Configuration;
+namespace VpnHood.Tools.ResourceTranslator.Configuration;
 
 /// <summary>
 /// Optional per-repository settings file (<c>vhtranslator.json</c>), discovered by walking up

@@ -1,4 +1,4 @@
-namespace VpnHood.ResourceTranslator.Cli;
+namespace VpnHood.Tools.ResourceTranslator.Cli;
 
 /// <summary>Writes progress to stdout and warnings to stderr, so CI logs separate cleanly.</summary>
 public sealed class ConsoleTranslationReporter : ITranslationReporter

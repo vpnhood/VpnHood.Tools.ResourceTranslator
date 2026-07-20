@@ -1,7 +1,7 @@
 using OpenAI;
 using OpenAI.Chat;
 
-namespace VpnHood.ResourceTranslator.Translation;
+namespace VpnHood.Tools.ResourceTranslator.Translation;
 
 internal sealed class ChatGptTranslator(
     string apiKey,

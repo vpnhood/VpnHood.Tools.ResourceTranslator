@@ -4,7 +4,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace VpnHood.ResourceTranslator.Watch;
+namespace VpnHood.Tools.ResourceTranslator.Watch;
 
 /// <summary>
 /// Persists the source text last seen for every key, so a later run can tell which entries

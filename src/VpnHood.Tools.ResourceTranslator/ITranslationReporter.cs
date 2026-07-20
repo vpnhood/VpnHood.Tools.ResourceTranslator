@@ -1,4 +1,4 @@
-namespace VpnHood.ResourceTranslator;
+namespace VpnHood.Tools.ResourceTranslator;
 
 /// <summary>
 /// Sink for progress and diagnostics. Keeping this out of the runner lets the translation

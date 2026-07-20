@@ -1,4 +1,4 @@
-# VpnHood.ResourceTranslator
+# VpnHood.Tools.ResourceTranslator
 
 AI-backed i18n resource translator for JSON and Microsoft `.resx` files, shipped as a .NET tool
 (`vhtranslator`) so other repositories can consume it without vendoring code.
@@ -6,22 +6,22 @@ AI-backed i18n resource translator for JSON and Microsoft `.resx` files, shipped
 ## Layout
 
 ```
-src/VpnHood.ResourceTranslator/
+src/VpnHood.Tools.ResourceTranslator/
   Cli/            command-line surface, console reporter
   Configuration/  vhtranslator.json discovery, option resolution
   Formats/        IResourceFormat implementations (JSON, .resx)
   Translation/    engines, prompt building, response parsing
   Watch/          change tracking (which keys need retranslation)
   Program.cs      parse-and-dispatch only; the pipeline lives in TranslationRunner
-tests/VpnHood.ResourceTranslator.Tests/
+tests/VpnHood.Tools.ResourceTranslator.Tests/
 ```
 
 ## Build and test
 
 ```bash
-dotnet build VpnHood.ResourceTranslator.slnx
-dotnet test  VpnHood.ResourceTranslator.slnx
-dotnet pack  src/VpnHood.ResourceTranslator/VpnHood.ResourceTranslator.csproj -o ./artifacts
+dotnet build VpnHood.Tools.ResourceTranslator.slnx
+dotnet test  VpnHood.Tools.ResourceTranslator.slnx
+dotnet pack  src/VpnHood.Tools.ResourceTranslator/VpnHood.Tools.ResourceTranslator.csproj -o ./artifacts
 ```
 
 Gotchas worth knowing before debugging a broken test run:
@@ -79,6 +79,16 @@ maintainer asking for it.
 git tag v1.1.0 && git push origin v1.1.0
 ```
 
-`.github/workflows/publish.yml` builds, tests, packs with the tag's version, and pushes to NuGet
-using the `NUGET_API_KEY` repository secret. `.github/workflows/build.yml` runs build/test/pack
-on pushes and pull requests.
+`.github/workflows/publish.yml` builds, tests, packs with the tag's version, and pushes to NuGet.
+`.github/workflows/build.yml` runs build/test/pack on pushes and pull requests.
+
+Publishing uses **nuget.org Trusted Publishing** (OIDC) — there is no long-lived API key. The job
+requests a GitHub OIDC token (`permissions: id-token: write`), exchanges it via `NuGet/login@v1`
+for a key valid for one hour, and pushes with that. Two consequences worth remembering:
+
+- The trusted publishing policy on nuget.org is bound to the **workflow file name**
+  (`publish.yml`) plus owner/repo. Renaming or moving that file breaks publishing until the
+  policy is updated to match.
+- The only repository secret involved is `NUGET_USER`, the nuget.org profile name. If the login
+  step fails with a policy mismatch, check the policy's owner/repo/workflow/environment fields
+  rather than looking for a missing API key.

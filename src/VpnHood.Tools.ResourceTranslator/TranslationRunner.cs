@@ -1,9 +1,9 @@
-using VpnHood.ResourceTranslator.Configuration;
-using VpnHood.ResourceTranslator.Formats;
-using VpnHood.ResourceTranslator.Translation;
-using VpnHood.ResourceTranslator.Watch;
+using VpnHood.Tools.ResourceTranslator.Configuration;
+using VpnHood.Tools.ResourceTranslator.Formats;
+using VpnHood.Tools.ResourceTranslator.Translation;
+using VpnHood.Tools.ResourceTranslator.Watch;
 
-namespace VpnHood.ResourceTranslator;
+namespace VpnHood.Tools.ResourceTranslator;
 
 /// <summary>
 /// Drives a translation run end to end: load the base file, work out what changed, translate

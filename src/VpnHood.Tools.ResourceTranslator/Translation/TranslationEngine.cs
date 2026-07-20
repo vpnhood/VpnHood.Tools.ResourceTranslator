@@ -1,4 +1,4 @@
-namespace VpnHood.ResourceTranslator.Translation;
+namespace VpnHood.Tools.ResourceTranslator.Translation;
 
 /// <summary>
 /// The AI backends the translator can drive. Engine names accepted on the command line

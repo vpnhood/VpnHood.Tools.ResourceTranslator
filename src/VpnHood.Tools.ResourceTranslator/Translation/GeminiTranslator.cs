@@ -1,7 +1,7 @@
 using Mscc.GenerativeAI;
 using Mscc.GenerativeAI.Types;
 
-namespace VpnHood.ResourceTranslator.Translation;
+namespace VpnHood.Tools.ResourceTranslator.Translation;
 
 internal sealed class GeminiTranslator(
     string apiKey,

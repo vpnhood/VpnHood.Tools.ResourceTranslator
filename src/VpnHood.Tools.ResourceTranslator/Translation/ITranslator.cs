@@ -1,5 +1,5 @@
 
-namespace VpnHood.ResourceTranslator.Translation;
+namespace VpnHood.Tools.ResourceTranslator.Translation;
 
 public interface ITranslator
 {

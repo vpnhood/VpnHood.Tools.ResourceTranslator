@@ -1,4 +1,4 @@
-namespace VpnHood.ResourceTranslator.Translation;
+namespace VpnHood.Tools.ResourceTranslator.Translation;
 
 /// <summary>
 /// Cleans up raw model output before it is written to a resource file. Models tend to wrap

@@ -1,6 +1,6 @@
-using VpnHood.ResourceTranslator.Translation;
+using VpnHood.Tools.ResourceTranslator.Translation;
 
-namespace VpnHood.ResourceTranslator.Configuration;
+namespace VpnHood.Tools.ResourceTranslator.Configuration;
 
 /// <summary>
 /// Fully resolved settings for a run: command-line values merged over the config file,

@@ -1,4 +1,4 @@
-namespace VpnHood.ResourceTranslator.Translation;
+namespace VpnHood.Tools.ResourceTranslator.Translation;
 
 /// <summary>
 /// Resolves which engine and model to use from (optionally absent) user input.

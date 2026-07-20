@@ -9,7 +9,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\VpnHood.ResourceTranslator\VpnHood.ResourceTranslator.csproj" />
+		<ProjectReference Include="..\..\src\VpnHood.Tools.ResourceTranslator\VpnHood.Tools.ResourceTranslator.csproj" />
 	</ItemGroup>
 
 </Project>

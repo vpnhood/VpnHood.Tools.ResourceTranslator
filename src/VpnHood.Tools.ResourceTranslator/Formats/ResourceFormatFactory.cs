@@ -1,4 +1,4 @@
-namespace VpnHood.ResourceTranslator.Formats;
+namespace VpnHood.Tools.ResourceTranslator.Formats;
 
 /// <summary>
 /// Chooses the resource format from the file extension. New formats are added here and by

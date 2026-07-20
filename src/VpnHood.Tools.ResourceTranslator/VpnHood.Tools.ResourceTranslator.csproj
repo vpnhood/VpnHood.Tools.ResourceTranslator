@@ -3,14 +3,14 @@
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
 		<AssemblyName>vhtranslator</AssemblyName>
-		<RootNamespace>VpnHood.ResourceTranslator</RootNamespace>
+		<RootNamespace>VpnHood.Tools.ResourceTranslator</RootNamespace>
 	</PropertyGroup>
 
-	<!-- Ship as a .NET global/local tool: `dotnet tool install -g VpnHood.ResourceTranslator` -->
+	<!-- Ship as a .NET global/local tool: `dotnet tool install -g VpnHood.Tools.ResourceTranslator` -->
 	<PropertyGroup>
 		<PackAsTool>true</PackAsTool>
 		<ToolCommandName>vhtranslator</ToolCommandName>
-		<PackageId>VpnHood.ResourceTranslator</PackageId>
+		<PackageId>VpnHood.Tools.ResourceTranslator</PackageId>
 		<Title>VpnHood Resource Translator</Title>
 		<Description>AI-powered i18n resource translator for JSON and Microsoft .resx files. Translates only what changed, preserves placeholders, HTML tags and formatting, and supports Google Gemini, OpenAI and Grok engines.</Description>
 	</PropertyGroup>
@@ -35,7 +35,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<InternalsVisibleTo Include="VpnHood.ResourceTranslator.Tests" />
+		<InternalsVisibleTo Include="VpnHood.Tools.ResourceTranslator.Tests" />
 	</ItemGroup>
 
 </Project>

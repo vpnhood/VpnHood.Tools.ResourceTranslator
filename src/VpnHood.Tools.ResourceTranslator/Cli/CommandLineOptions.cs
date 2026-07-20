@@ -1,4 +1,4 @@
-namespace VpnHood.ResourceTranslator.Cli;
+namespace VpnHood.Tools.ResourceTranslator.Cli;
 
 /// <summary>
 /// Raw command-line input. Every value is optional here; defaults and the config file are

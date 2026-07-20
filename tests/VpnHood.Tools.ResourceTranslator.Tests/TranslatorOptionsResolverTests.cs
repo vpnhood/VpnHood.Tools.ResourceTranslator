@@ -1,8 +1,8 @@
-using VpnHood.ResourceTranslator.Cli;
-using VpnHood.ResourceTranslator.Configuration;
-using VpnHood.ResourceTranslator.Translation;
+using VpnHood.Tools.ResourceTranslator.Cli;
+using VpnHood.Tools.ResourceTranslator.Configuration;
+using VpnHood.Tools.ResourceTranslator.Translation;
 
-namespace VpnHood.ResourceTranslator.Tests;
+namespace VpnHood.Tools.ResourceTranslator.Tests;
 
 [TestClass]
 public sealed class TranslatorOptionsResolverTests

@@ -1,8 +1,8 @@
-using VpnHood.ResourceTranslator.Cli;
-using VpnHood.ResourceTranslator.Formats;
-using VpnHood.ResourceTranslator.Translation;
+using VpnHood.Tools.ResourceTranslator.Cli;
+using VpnHood.Tools.ResourceTranslator.Formats;
+using VpnHood.Tools.ResourceTranslator.Translation;
 
-namespace VpnHood.ResourceTranslator.Configuration;
+namespace VpnHood.Tools.ResourceTranslator.Configuration;
 
 /// <summary>
 /// Merges command-line input over the optional <c>vhtranslator.json</c> and validates the

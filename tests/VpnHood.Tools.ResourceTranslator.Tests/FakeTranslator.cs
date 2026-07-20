@@ -1,6 +1,6 @@
-using VpnHood.ResourceTranslator.Translation;
+using VpnHood.Tools.ResourceTranslator.Translation;
 
-namespace VpnHood.ResourceTranslator.Tests;
+namespace VpnHood.Tools.ResourceTranslator.Tests;
 
 /// <summary>
 /// Deterministic stand-in for a real engine: echoes each item back with a language marker,

@@ -1,9 +1,9 @@
 using System.CommandLine;
-using VpnHood.ResourceTranslator.Configuration;
-using VpnHood.ResourceTranslator.Formats;
-using VpnHood.ResourceTranslator.Translation;
+using VpnHood.Tools.ResourceTranslator.Configuration;
+using VpnHood.Tools.ResourceTranslator.Formats;
+using VpnHood.Tools.ResourceTranslator.Translation;
 
-namespace VpnHood.ResourceTranslator.Cli;
+namespace VpnHood.Tools.ResourceTranslator.Cli;
 
 /// <summary>
 /// Defines the command-line surface and maps it onto <see cref="TranslationRunner" />.

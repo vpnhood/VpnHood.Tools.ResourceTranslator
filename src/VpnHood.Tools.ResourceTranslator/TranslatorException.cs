@@ -1,4 +1,4 @@
-namespace VpnHood.ResourceTranslator;
+namespace VpnHood.Tools.ResourceTranslator;
 
 /// <summary>
 /// An error that is meaningful to the user and maps onto a specific process exit code.

@@ -1,419 +1,262 @@
-An intelligent i18n resource translator that uses AI (Google Gemini, OpenAI ChatGPT, or Grok AI) to automatically translate JSON and Microsoft .resx localization files while preserving placeholders, HTML tags, and formatting.
+# VpnHood.ResourceTranslator
+
+An i18n resource translator that uses AI (Google Gemini, OpenAI ChatGPT, or Grok AI) to translate
+JSON and Microsoft `.resx` localization files while preserving placeholders, HTML tags, and formatting.
+
+It ships as a .NET tool, so any repository — apps, sites, docs — can adopt it without vendoring code.
 
 ## Features
 
-- 🤖 **Multi-Engine AI Translation** - Supports Google Gemini, OpenAI ChatGPT, and Grok AI with smart engine detection
-- 📦 **Multiple Formats** - Translates JSON (`{lang}.json`) and Microsoft .resx (`Name.resx` / `Name.{culture}.resx`) resource files
-- 🔄 **Incremental Updates** - Only translates changed entries by tracking the last-translated source text
-- 🎯 **Smart Placeholder Preservation** - Keeps `{variables}`, HTML tags, and URLs intact
-- 📁 **Batch Processing** - Translates multiple language files simultaneously
-- 🌐 **Flexible Source Language** - Use any language as the base source (not just English)
-- 🔧 **Customizable Prompts** - Template-based prompts with custom instructions
-- 📊 **Progress Tracking** - Real-time progress for large translation jobs
-- 🛡️ **Robust Error Handling** - Automatic retries and detailed error messages
-- 🧠 **Intelligent Engine Detection** - Automatically selects the right AI engine based on model name
-
-<img width="500" alt="Gemini_Generated_Image_45do0g45do0g45do (1)" src="https://github.com/user-attachments/assets/b661d5e1-fe5d-4bc7-9ad1-187e72281b7d" />
+- 🤖 **Multi-engine** — Google Gemini, OpenAI ChatGPT, and Grok AI, with the engine inferred from the model name
+- 📦 **Multiple formats** — JSON (`{lang}.json`) and Microsoft `.resx` (`Name.resx` / `Name.{culture}.resx`)
+- 🔄 **Incremental** — only entries whose source text changed are retranslated
+- 🎯 **Placeholder-safe** — `{variables}`, HTML tags, and URLs survive translation
+- 🗂️ **Per-repo config** — commit a `vhtranslator.json` and just run `vhtranslator`
+- 🔧 **Customizable prompts** — project-specific glossaries and rules
+- 🛡️ **Retries and clear exit codes** — designed to run unattended in CI
 
 ## Installation
 
-### Prerequisites
-- .NET 10.0 SDK or later
-- API key for your preferred service:
-  - Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
-  - OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
-  - Grok AI API key ([Get one here](https://console.x.ai/))
+Requires the .NET 10 SDK or later.
 
-### Build from Source
+```bash
+# Global install
+dotnet tool install --global VpnHood.ResourceTranslator
+
+# Or pin it per repository (recommended for teams and CI)
+dotnet new tool-manifest
+dotnet tool install VpnHood.ResourceTranslator
+```
+
+Then invoke it as `vhtranslator` (or `dotnet tool run vhtranslator` for a local install).
+
+You will also need an API key for your chosen engine:
+
+| Engine | Environment variable | Get a key |
+| --- | --- | --- |
+| Gemini (default) | `GEMINI_API_KEY` | [makersuite.google.com](https://makersuite.google.com/app/apikey) |
+| ChatGPT | `OPENAI_API_KEY` | [platform.openai.com](https://platform.openai.com/api-keys) |
+| Grok | `GROK_API_KEY` | [console.x.ai](https://console.x.ai/) |
+
+## Quick start
+
+```bash
+export GEMINI_API_KEY="your-key"
+vhtranslator -b locales/en.json
+```
+
+Every sibling locale file (`fr.json`, `es.json`, …) is brought up to date with `en.json`.
+
+## Per-repository configuration
+
+Drop a `vhtranslator.json` at the root of a repository and the tool needs no arguments at all.
+It is discovered by walking up from the base file, or from the working directory.
+
+```json
+{
+  "base": "locales/en.json",
+  "engine": "gemini",
+  "model": "gemini-flash-lite-latest",
+  "batch": 20,
+  "extraPrompt": "translation-guidelines.txt",
+  "languages": ["fr", "de", "es"]
+}
+```
+
+| Key | Meaning |
+| --- | --- |
+| `base` | Base language file, relative to the config file |
+| `engine` | `gemini`, `gpt`, or `grok` |
+| `model` | Model name; the engine is inferred from it when `engine` is omitted |
+| `batch` | Entries per request (default 20) |
+| `extraPrompt` | Extra instructions file, relative to the config file |
+| `languages` | Target languages. Missing files are **created**. Omit to translate only existing sibling files |
+
+Command-line options always override the config file:
+
+```bash
+vhtranslator                      # uses vhtranslator.json
+vhtranslator -m gpt-4o-mini       # same config, different model
+vhtranslator --config ci/vhtranslator.json
+```
+
+## Command-line options
+
+```text
+vhtranslator [options]
+
+  -b, --base <path>          Path to the base language file (.json / .resx)
+      --config <path>        Path to a vhtranslator.json file (default: nearest one found)
+  -x, --extra-prompt <path>  Path to extra instructions appended to the AI prompt
+  -c, --show-changes         Show changed keys since the last translation and exit
+  -r, --rebuild-lang <code>  Force retranslation of every entry for one language
+  -i, --ignore-changes       Mark all current entries as translated without calling the AI
+  -k, --api-key <key>        API key (or use the engine's environment variable)
+  -m, --model <name>         AI model (default depends on the engine)
+  -e, --engine <name>        gemini, gpt, or grok (default: detected from the model name)
+  -n, --batch <number>       Batch size for translation requests (default: 20)
+  -?, -h, --help             Show help and usage information
+      --version              Show version information
+```
+
+`--show-changes` and `--ignore-changes` do not call the AI and need no API key.
+
+### Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| 0 | Success |
+| 1 | Invalid arguments or configuration |
+| 2 | File not found or unsupported file type |
+| 3 | Failed to parse the base file |
+| 4 | Missing API key |
+| 10 | Translation failed after retries |
+
+## File layouts
+
+The format is chosen from the base file's extension. The base file is never overwritten.
+
+### JSON
+
+Locale files are named `{language-code}.json`, and any language can be the base:
+
+```text
+locales/
+├── en.json               # base
+├── fr.json
+├── de.json
+└── vh_translator/
+    └── en_watch.json     # change tracking (auto-generated, commit this)
+```
+
+### Microsoft .resx
+
+Standard .NET naming: a neutral base file with culture-specific siblings. Only string `<data>`
+entries are translated — typed/binary entries, comments, metadata, and the schema are preserved.
+
+```text
+Resources/
+├── Strings.resx          # base (neutral culture, treated as source "en")
+├── Strings.fr.resx
+├── Strings.de-DE.resx
+└── vh_translator/
+    └── Strings_watch.json
+```
+
+```bash
+vhtranslator -b Resources/Strings.resx
+vhtranslator -b Resources/Strings.resx -r es   # creates Strings.es.resx
+```
+
+## How change tracking works
+
+`vh_translator/<base>_watch.json` records the source text last translated for every key.
+On the next run, a key is retranslated when its source text differs — and a key missing from a
+target file is always filled in.
+
+**Commit the watch file.** Without it, the next run treats every key as changed and retranslates
+everything.
+
+Adopting existing hand-written translations:
+
+```bash
+vhtranslator -b locales/en.json -i   # mark everything current, translate nothing
+```
+
+## Prompt customization
+
+Add project-specific rules via `--extra-prompt`, the `extraPrompt` config key, or by creating
+`vh_translator/custom_prompt.txt` next to the base file (picked up automatically).
+
+```text
+- Keep technical terms like "VPN", "API", "JSON" untranslated
+- Brand name "VpnHood" should always remain unchanged
+- Use formal tone for German; use Latin American variants for Spanish
+- Return "*" to skip an entry entirely
+```
+
+Returning `*` makes the tool keep any existing translation, or fall back to the source text.
+This is useful for brand names, URLs, and region-specific entries.
+
+## Typical workflows
+
+```bash
+# See what would change
+vhtranslator -c
+
+# Translate new and changed entries, then review the diff
+vhtranslator
+git diff locales/
+
+# Add a new language
+vhtranslator -r it
+
+# Re-translate one language after improving the prompt
+vhtranslator -r fr
+```
+
+### In CI
+
+```yaml
+- run: dotnet tool install --global VpnHood.ResourceTranslator
+- run: vhtranslator
+  env:
+    GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```
+
+Pair it with a pull-request action so translations arrive as reviewable diffs.
+
+## Repository layout
+
+```text
+src/VpnHood.ResourceTranslator/     # the tool
+  Cli/                              # command-line surface
+  Configuration/                    # config file discovery and option resolution
+  Formats/                          # IResourceFormat: JSON and .resx
+  Translation/                      # engines, prompts, response parsing
+  Watch/                            # change tracking
+tests/VpnHood.ResourceTranslator.Tests/
+```
+
+Adding a format means implementing `IResourceFormat` and registering it in `ResourceFormatFactory`.
+Adding an engine means implementing `ITranslator` and registering it in `TranslatorFactory`.
+
+## Building from source
+
 ```bash
 git clone https://github.com/vpnhood/VpnHood.ResourceTranslator.git
 cd VpnHood.ResourceTranslator
-dotnet build --configuration Release
+dotnet build
+dotnet test
+dotnet pack src/VpnHood.ResourceTranslator/VpnHood.ResourceTranslator.csproj -o ./artifacts
 ```
 
-## Quick Start
+## Releasing
 
-1. **Set your API key**:
-   ```bash
-   # For Gemini (default)
-   export GEMINI_API_KEY="your-gemini-api-key-here"
-   
-   # For OpenAI ChatGPT
-   export OPENAI_API_KEY="your-openai-api-key-here"
-   
-   # For Grok AI
-   export GROK_API_KEY="your-grok-api-key-here"
-   
-   # On Windows:
-   set GEMINI_API_KEY=your-gemini-api-key-here
-   set OPENAI_API_KEY=your-openai-api-key-here
-   set GROK_API_KEY=your-grok-api-key-here
-   ```
-
-2. **Basic translation** (uses Gemini by default):
-   ```bash
-   vhtranslator -b locales/en.json
-   ```
-
-3. **Use other AI engines**:
-   ```bash
-   # ChatGPT
-   vhtranslator -b locales/en.json -m gpt-4o-mini
-   
-   # Grok AI
-   vhtranslator -b locales/en.json -m grok-4-latest
-   ```
-
-## Engine and Model Selection
-
-The translator features **intelligent engine detection**:
-
-- **Auto-detection**: If no engine is specified, it's automatically detected from the model name
-- **Gemini models**: Any model containing "gemini" uses the Gemini engine
-- **ChatGPT models**: Models like gpt-4, gpt-3.5-turbo, etc. use the ChatGPT engine
-- **Grok AI models**: Models containing "grok" use the Grok AI engine
-- **Manual override**: Use `-e` to explicitly specify the engine
-
-### Examples:
-```bash
-# Auto-detects Gemini engine
-vhtranslator -b locales/en.json -m gemini-2.5-flash
-
-# Auto-detects ChatGPT engine  
-vhtranslator -b locales/en.json -m gpt-4o-mini
-
-# Auto-detects Grok AI engine
-vhtranslator -b locales/en.json -m grok-4-latest
-
-# Explicitly specify engine
-vhtranslator -b locales/en.json -e grok -m grok-4-latest
-
-# Default behavior (Gemini)
-vhtranslator -b locales/en.json
-```
-
-## Usage
-
-### Command Line Options
-
-```
-vhtranslator [options]
-
-Options:
-  -b, --base <path>          Path to base language file (e.g., en.json, fr.json, de.json)
-  -x, --extra-prompt <path>  Path to extra instructions text file for the AI prompt
-  -c, --show-changes         Show changed keys since last translation and exit
-  -r, --rebuild-lang <code>  Force rebuild/translate all items for specific language
-  -i, --ignore-changes       Rebuild watch file to mark all entries as current
-  -k, --api-key <key>        API key (or set GEMINI_API_KEY/OPENAI_API_KEY/GROK_API_KEY env var)
-  -m, --model <name>         AI model (default: gemini-flash-lite-latest)
-  -e, --engine <name>        Translation engine: gemini, gpt, or grok (default: auto-detected)
-  -n, --batch <number>       Batch size for translation requests (default: 20)
-  -?, -h, --help             Show help and usage information
-  --version                  Show version information
-```
-
-### Examples
-
-#### Basic Translation with Different Engines
-```bash
-# Use Gemini (default)
-vhtranslator -b locales/en.json
-
-# Use ChatGPT with auto-detection
-vhtranslator -b locales/en.json -m gpt-4o-mini
-
-# Use Grok AI with auto-detection
-vhtranslator -b locales/en.json -m grok-4-latest
-
-# Use specific Gemini model
-vhtranslator -b locales/en.json -m gemini-2.5-pro
-
-# Explicitly specify engine
-vhtranslator -b locales/en.json -e grok -m grok-4-latest
-```
-
-#### Advanced Usage
-```bash
-# Use French as source language with Grok AI
-vhtranslator -b locales/fr.json -m grok-4-latest
-
-# Force rebuild Spanish with Grok AI
-vhtranslator -b locales/en.json -r es -e grok -m grok-4-latest
-
-# Use custom instructions with ChatGPT
-vhtranslator -b locales/en.json -x custom-prompt.txt -m gpt-4
-
-# Show what changed since last translation
-vhtranslator -b locales/en.json -c
-```
-
-## File Structure
-
-The format is chosen automatically from the base file's extension: `.json` or `.resx`. Sibling target files are discovered by the convention for that format, and the base file is never overwritten.
-
-### JSON Input Files
-
-JSON locales are named `{language-code}.json`, and any language can be the base:
-
-**English as Base:**
-```
-locales/
-+-- en.json              # Base English file
-+-- fr.json              # French translations
-+-- es.json              # Spanish translations
-+-- de.json              # German translations
-+-- vh_translator/
-    +-- en_watch.json    # Change tracking file (auto-generated)
-```
-
-**French as Base:**
-```
-locales/
-+-- fr.json              # Base French file
-+-- en.json              # English translations
-+-- es.json              # Spanish translations
-+-- de.json              # German translations
-+-- vh_translator/
-    +-- fr_watch.json    # Change tracking file (auto-generated)
-```
-
-### Microsoft .resx Input Files
-
-.resx files follow the standard .NET naming convention: a neutral base file (`Name.resx`) with culture-specific siblings (`Name.{culture}.resx`). Only string `<data>` entries are translated — typed/binary entries (file references, images, serialized objects), comments, metadata, and the resx schema are preserved untouched.
-
-```
-Resources/
-+-- Strings.resx          # Base file (neutral culture, treated as source "en")
-+-- Strings.fr.resx       # French translations
-+-- Strings.es.resx       # Spanish translations
-+-- Strings.de-DE.resx    # German (Germany) translations
-+-- vh_translator/
-    +-- Strings_watch.json # Change tracking file (auto-generated)
-```
+Version comes from `VersionPrefix` in `Directory.Build.props`; the publish workflow takes it from
+the git tag:
 
 ```bash
-# Translate every sibling Strings.{culture}.resx from the neutral base
-vhtranslator -b Resources/Strings.resx
-
-# Force-rebuild a single culture (creates Strings.es.resx if absent)
-vhtranslator -b Resources/Strings.resx -r es
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
-### Generated Files
-
-- `vh_translator/<base>_watch.json` - Versioned file storing the last-translated source text per key to detect what needs retranslation (legacy hash-based files are migrated automatically on the next successful run)
-
-## Sample Files
-
-### en.json (Base File)
-```json
-{
-  "WELCOME_MESSAGE": "Welcome to our application!",
-  "USER_GREETING": "Hello, {username}!",
-  "ITEM_COUNT": "You have {count} items in your cart.",
-  "SETTINGS": "Settings",
-  "SAVE_BUTTON": "Save Changes",
-  "ERROR_NETWORK": "Network connection failed. Please try again.",
-  "PRIVACY_POLICY_URL": "https://example.com/privacy",
-  "COLORED_TEXT": "This is <span class=\"highlight\">important</span> information.",
-  "EMAIL_LINK": "Contact us at <a href=\"mailto:support@example.com\">support@example.com</a>"
-}
-```
-
-### fr.json (Generated Translation)
-```json
-{
-  "WELCOME_MESSAGE": "Bienvenue dans notre application !",
-  "USER_GREETING": "Bonjour, {username} !",
-  "ITEM_COUNT": "Vous avez {count} articles dans votre panier.",
-  "SETTINGS": "Paramètres",
-  "SAVE_BUTTON": "Enregistrer les modifications",
-  "ERROR_NETWORK": "La connexion réseau a échoué. Veuillez réessayer.",
-  "PRIVACY_POLICY_URL": "https://example.com/privacy",
-  "COLORED_TEXT": "Ceci est une information <span class=\"highlight\">importante</span>.",
-  "EMAIL_LINK": "Contactez-nous à <a href=\"mailto:support@example.com\">support@example.com</a>"
-}
-```
-
-### custom-prompt.txt (Custom Instructions)
-```text
-Translation Guidelines:
-- Keep technical terms like "VPN", "API", "JSON" untranslated
-- Use formal tone for German translations
-- For Spanish, use Latin American variants
-- Brand name "VpnHood" should always remain unchanged
-- Use gender-neutral language where possible
-```
-
-## Workflow Examples
-
-### Daily Development Workflow
-1. Add new keys to your base language file (e.g., `en.json`)
-2. Run translator: `vhtranslator -b locales/en.json`
-3. Only new/changed keys get translated
-4. Review and commit changes
-
-### Setting Up New Language
-1. Create empty `locales/it.json` file: `{}` 
-2. Run: `vhtranslator -b locales/en.json -r it`
-3. All entries get translated for Italian
-
-### Cross-Language Translation
-1. Translate from French to Spanish: `vhtranslator -b locales/fr.json -r es`
-2. Use German as source for Italian: `vhtranslator -b locales/de.json -r it`
-3. Mix and match source languages as needed
-
-### Quality Control Workflow
-1. Improve your `translation-prompt.txt`
-2. Rebuild all languages: `vhtranslator -b locales/en.json -r fr`
-3. Compare results and iterate
-
-### Mixed Manual/Auto Workflow
-1. Manually fix some translations in `fr.json`
-2. Mark as current: `vhtranslator -b locales/en.json -i`
-3. Add new keys to base language file
-4. Run translator: only new keys get auto-translated
-
-### Selective Translation Workflow
-1. Create `skip-rules.txt` with language-specific skip rules:
-   ```text
-   For Chinese market: Skip "GOOGLE_PLAY_LINK" keys by returning "*"
-   For Arabic: Skip "FACEBOOK_SHARE" by returning "*" 
-   For Japanese: Skip keys containing "WESTERN" by returning "*"
-   ```
-2. Run: `vhtranslator -b locales/en.json -x skip-rules.txt`
-3. Certain keys remain untranslated based on cultural/regional appropriateness
-4. Manually handle skipped keys if needed
-
-## Advanced Configuration
-
-### Skip Translation Feature
-
-The translator supports selective translation skipping. If the AI returns "*" as the translation, the tool will skip translating that specific key for that language and keep the existing value (or use the source text if missing).
-
-This is useful for:
-- Language-specific terms that shouldn't be translated
-- Cultural references that don't apply to certain regions
-- Technical terms that should remain in the source language
-
-### Using Key Information in Custom Prompts
-
-The translator provides the key name to the AI, allowing you to create key-specific translation rules:
-
-**custom-prompt.txt example:**
-```text
-Translation Guidelines:
-- Keep technical terms like "VPN", "API", "JSON" untranslated
-- Brand name "VpnHood" should always remain unchanged
-- Use formal tone for German translations
-- For Spanish, use Latin American variants
-
-Key-Specific Rules:
-- PRIVACY_POLICY_URL: Return "*" for Chinese to skip translation
-- TECHNICAL_SUPPORT_EMAIL: Return "*" for all languages to keep original
-- APP_VERSION_INFO: Return "*" for Japanese, Korean to avoid translation
-- If key contains "DEBUG" or "DEVELOPER": Return "*" for all non-English languages
-```
-
-### Environment Variables
-
-```bash
-# Required (choose one based on your preferred engine)
-export GEMINI_API_KEY="your-gemini-api-key"
-export OPENAI_API_KEY="your-openai-api-key" 
-export GROK_API_KEY="your-grok-api-key"
-```
-
-## Best Practices
-
-### 1. Key Naming
-```json
-{
-  "SECTION_TITLE": "Good - descriptive and clear",
-  "btn1": "Avoid - unclear purpose",
-  "USER_PROFILE_EDIT_BUTTON": "Good - specific and descriptive"
-}
-```
-
-### 2. Placeholder Usage
-```json
-{
-  "GREETING": "Hello, {username}!",           // ✅ Good
-  "MESSAGE": "You have {count} new messages", // ✅ Good
-  "WELCOME": "Welcome {0}!"                   // ❌ Avoid numbered placeholders
-}
-```
-
-### 3. HTML in Translations
-```json
-{
-  "TERMS": "I agree to the <a href=\"/terms\">Terms of Service</a>",  // ✅ Good
-  "HIGHLIGHT": "This is <strong>important</strong> text"              // ✅ Good
-}
-```
-
-### 4. Regular Workflow
-```bash
-# 1. Check what changed
-vhtranslator -b locales/en.json -c
-
-# 2. Translate changes
-vhtranslator -b locales/en.json
-
-# 3. Review and commit
-git add locales/
-git commit -m "Update translations"
-```
-
-### 5. Multi-Source Workflows
-```bash
-# Use English as primary source
-vhtranslator -b locales/en.json
-
-# But translate French to German directly for better accuracy
-vhtranslator -b locales/fr.json -r de
-
-# Or use Spanish as source for Portuguese
-vhtranslator -b locales/es.json -r pt
-```
+This requires a `NUGET_API_KEY` repository secret.
 
 ## Troubleshooting
 
-### Common Issues
+**`Error: Missing API key`** — set the variable for your engine (`GEMINI_API_KEY`,
+`OPENAI_API_KEY`, or `GROK_API_KEY`), or pass `-k`.
 
-**API Key Problems**
-```bash
-Error: Missing Gemini API key
-Error: Missing Grok API key
-```
-- Set appropriate environment variable: `GEMINI_API_KEY`, `OPENAI_API_KEY`, or `GROK_API_KEY`
-- Or use `-k` flag: `--api-key your-key-here`
+**`Error: Failed to parse base file`** — the base file must be a JSON object (validate with
+`jq . locales/en.json`) or well-formed `.resx` XML. Nested JSON objects are not supported;
+keys must be flat.
 
-**Parse Errors**
-```bash
-Error: Failed to parse base file
-```
-- Check your base file for valid syntax (a JSON object for `.json`, well-formed XML for `.resx`)
-- For JSON, validate with: `jq . your-base-file.json`
+**Everything gets retranslated every run** — the watch file is missing or not committed.
 
-**Unsupported File Type**
-```bash
-Error: Unsupported file type '.xml'. Supported formats: .json, .resx
-```
-- The base file extension must be `.json` or `.resx`
+**Rate limits** — lower `--batch`, or use a lighter model such as `gemini-flash-lite-latest`
+or `gpt-4o-mini`. The tool already retries with backoff.
 
-**Missing Placeholders**
-- The tool automatically appends missing `{placeholders}` to prevent runtime errors
-- Review output if placeholders seem misplaced
+## License
 
-### Rate Limiting
-If you hit API rate limits:
-- **Gemini**: Use `gemini-flash-lite-latest` model (faster, cheaper)
-- **ChatGPT**: Use `gpt-3.5-turbo` for faster, cheaper requests
-- **Grok**: Monitor usage and implement delays if needed
-- Add delays between requests (built-in retry logic)
-
-**Engine-Specific Notes**
-- **Grok AI**: Check that your X.AI account has API access enabled
-- **API Endpoints**: The tool uses standard OpenAI-compatible endpoints for supported engines
+LGPL-2.1-only — see [LICENSE](LICENSE). Same license as [VpnHood](https://github.com/vpnhood/VpnHood).

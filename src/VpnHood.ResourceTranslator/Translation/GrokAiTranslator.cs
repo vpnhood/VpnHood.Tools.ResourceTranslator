@@ -1,9 +1,8 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using VpnHood.ResourceTranslator.Models;
 
-namespace VpnHood.ResourceTranslator.Translators;
+namespace VpnHood.ResourceTranslator.Translation;
 
 internal sealed class GrokAiTranslator(
     string apiKey,
@@ -15,12 +14,12 @@ internal sealed class GrokAiTranslator(
 
     public async Task<TranslateResult[]> TranslateAsync(PromptOptions promptOptions, CancellationToken cancellationToken)
     {
-        var prompt = TranslateUtils.BuildPrompt(promptOptions);
+        var prompt = PromptBuilder.BuildPrompt(promptOptions);
 
         var requestBody = new {
             model,
             messages = new[] {
-                new { role = "system", content = TranslateUtils.BuildSystemPrompt() },
+                new { role = "system", content = PromptBuilder.BuildSystemPrompt() },
                 new { role = "user", content = prompt }
             },
             temperature = 0.1,

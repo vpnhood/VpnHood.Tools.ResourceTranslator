@@ -2,8 +2,18 @@
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path=".github/copilot-instructions.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
     <File Path="README.md" />
   </Folder>
-  <Project Path="VpnHood.ResourceTranslator.Test/VpnHood.ResourceTranslator.Test.csproj" />
-  <Project Path="VpnHood.ResourceTranslator/VpnHood.ResourceTranslator.csproj" />
+  <Folder Name="/Solution Items/workflows/">
+    <File Path=".github/workflows/build.yml" />
+    <File Path=".github/workflows/publish.yml" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/VpnHood.ResourceTranslator/VpnHood.ResourceTranslator.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VpnHood.ResourceTranslator.Tests/VpnHood.ResourceTranslator.Tests.csproj" />
+  </Folder>
 </Solution>

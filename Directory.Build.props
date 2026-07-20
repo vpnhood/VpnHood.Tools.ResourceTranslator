@@ -1,0 +1,58 @@
+<Project>
+
+	<!-- Language / compiler settings shared by every project in the repo. -->
+	<PropertyGroup>
+		<TargetFramework>net10.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<LangVersion>latest</LangVersion>
+		<InvariantGlobalization>false</InvariantGlobalization>
+		<AnalysisLevel>latest</AnalysisLevel>
+		<EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+		<GenerateDocumentationFile>false</GenerateDocumentationFile>
+	</PropertyGroup>
+
+	<!--
+	  Single source of truth for the product version. Bump VersionPrefix to release;
+	  the publish workflow derives the NuGet package version from the git tag.
+	-->
+	<PropertyGroup>
+		<VersionPrefix>1.1.0</VersionPrefix>
+		<FileVersion>$([System.DateTime]::Now.ToString("yyyy.M.d.HHmm"))</FileVersion>
+	</PropertyGroup>
+
+	<!-- Package metadata shared by anything that ships to NuGet. -->
+	<PropertyGroup>
+		<Authors>OmegaHood LLC</Authors>
+		<Company>OmegaHood LLC</Company>
+		<Copyright>© OmegaHood LLC. All rights reserved.</Copyright>
+		<PackageProjectUrl>https://github.com/vpnhood/VpnHood.ResourceTranslator</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/vpnhood/VpnHood.ResourceTranslator</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageLicenseExpression>LGPL-2.1-only</PackageLicenseExpression>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageTags>i18n;l10n;localization;translation;ai;gemini;openai;resx;json;dotnet-tool</PackageTags>
+	</PropertyGroup>
+
+	<!-- Reproducible builds: embed source metadata so symbols resolve from the repo. -->
+	<PropertyGroup>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<Deterministic>true</Deterministic>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+	</PropertyGroup>
+
+	<!--
+	  Tests run on Microsoft.Testing.Platform; the .NET 10 SDK dropped the VSTest bridge,
+	  so `dotnet test` must be told to use the MTP runner.
+	-->
+	<PropertyGroup>
+		<TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+	</PropertyGroup>
+
+</Project>

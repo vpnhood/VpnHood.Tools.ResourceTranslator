@@ -1,6 +1,6 @@
-using VpnHood.ResourceTranslator.Models;
+using VpnHood.ResourceTranslator.Translation;
 
-namespace VpnHood.ResourceTranslator.Test;
+namespace VpnHood.ResourceTranslator.Tests;
 
 [TestClass]
 public sealed class AiResponseParserTests
@@ -89,18 +89,18 @@ public sealed class AiResponseParserTests
     [TestMethod]
     public void ParseResponse_ThrowsOnInvalidJson()
     {
-        Assert.ThrowsException<Exception>(() => AiResponseParser.ParseResponse("this is not json"));
+        Assert.ThrowsExactly<Exception>(() => AiResponseParser.ParseResponse("this is not json"));
     }
 
     [TestMethod]
     public void ParseResponse_ThrowsOnEmptyArray()
     {
-        Assert.ThrowsException<Exception>(() => AiResponseParser.ParseResponse("[]"));
+        Assert.ThrowsExactly<Exception>(() => AiResponseParser.ParseResponse("[]"));
     }
 
     [TestMethod]
     public void ParseResponse_ThrowsOnUnknownStructure()
     {
-        Assert.ThrowsException<Exception>(() => AiResponseParser.ParseResponse("123"));
+        Assert.ThrowsExactly<Exception>(() => AiResponseParser.ParseResponse("123"));
     }
 }

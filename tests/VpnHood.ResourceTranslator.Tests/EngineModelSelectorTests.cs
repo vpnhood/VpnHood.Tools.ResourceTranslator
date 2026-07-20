@@ -1,90 +1,81 @@
-using VpnHood.ResourceTranslator.Models;
+using VpnHood.ResourceTranslator.Translation;
 
-namespace VpnHood.ResourceTranslator.Test;
+namespace VpnHood.ResourceTranslator.Tests;
 
 [TestClass]
 public sealed class EngineModelSelectorTests
 {
     [TestMethod]
-    public void SelectEngineAndModel_AutoDetectsGemini()
+    [DataRow("gemini-2.5-flash", TranslationEngine.Gemini)]
+    [DataRow("gpt-4o-mini", TranslationEngine.Gpt)]
+    [DataRow("grok-4-latest", TranslationEngine.Grok)]
+    public void Select_AutoDetectsEngineFromModel(string model, TranslationEngine expected)
     {
-        var (engine, model) = EngineModelSelector.SelectEngineAndModel(null, "gemini-2.5-flash");
+        var selection = EngineModelSelector.Select(null, model);
 
-        Assert.AreEqual("gemini", engine);
-        Assert.AreEqual("gemini-2.5-flash", model);
+        Assert.AreEqual(expected, selection.Engine);
+        Assert.AreEqual(model, selection.Model);
     }
 
     [TestMethod]
-    public void SelectEngineAndModel_AutoDetectsGpt()
+    public void Select_ExplicitEngineOverridesDetection()
     {
-        var (engine, model) = EngineModelSelector.SelectEngineAndModel(null, "gpt-4o-mini");
+        var selection = EngineModelSelector.Select("grok", "gpt-4");
 
-        Assert.AreEqual("gpt", engine);
-        Assert.AreEqual("gpt-4o-mini", model);
+        Assert.AreEqual(TranslationEngine.Grok, selection.Engine);
+        Assert.AreEqual("gpt-4", selection.Model);
     }
 
     [TestMethod]
-    public void SelectEngineAndModel_AutoDetectsGrok()
+    public void Select_UsesDefaultEngineAndModelWhenNothingSpecified()
     {
-        var (engine, model) = EngineModelSelector.SelectEngineAndModel(null, "grok-4-latest");
+        var selection = EngineModelSelector.Select(null, null);
 
-        Assert.AreEqual("grok", engine);
-        Assert.AreEqual("grok-4-latest", model);
+        Assert.AreEqual(TranslationEngine.Gemini, selection.Engine);
+        Assert.AreEqual("gemini-flash-lite-latest", selection.Model);
     }
 
     [TestMethod]
-    public void SelectEngineAndModel_ExplicitEngineOverridesDetection()
+    [DataRow("grok", TranslationEngine.Grok, "grok-4-latest")]
+    [DataRow("gpt", TranslationEngine.Gpt, "gpt-4o-mini")]
+    [DataRow("gemini", TranslationEngine.Gemini, "gemini-flash-lite-latest")]
+    public void Select_UsesEngineSpecificDefaultModels(string engine, TranslationEngine expectedEngine, string expectedModel)
     {
-        var (engine, model) = EngineModelSelector.SelectEngineAndModel("grok", "gpt-4");
+        var selection = EngineModelSelector.Select(engine, null);
 
-        Assert.AreEqual("grok", engine);
-        Assert.AreEqual("gpt-4", model);
+        Assert.AreEqual(expectedEngine, selection.Engine);
+        Assert.AreEqual(expectedModel, selection.Model);
     }
 
     [TestMethod]
-    public void SelectEngineAndModel_UsesDefaultEngineAndModelWhenNothingSpecified()
+    [DataRow("chatgpt", TranslationEngine.Gpt)]
+    [DataRow("openai", TranslationEngine.Gpt)]
+    [DataRow("OpenAI", TranslationEngine.Gpt)]
+    [DataRow("grok-ai", TranslationEngine.Grok)]
+    [DataRow("grokai", TranslationEngine.Grok)]
+    [DataRow("x-ai", TranslationEngine.Grok)]
+    [DataRow("xai", TranslationEngine.Grok)]
+    [DataRow("google", TranslationEngine.Gemini)]
+    public void ParseEngine_NormalizesAliases(string alias, TranslationEngine expected)
     {
-        var (engine, model) = EngineModelSelector.SelectEngineAndModel(null, null);
-
-        Assert.AreEqual("gemini", engine);
-        Assert.AreEqual("gemini-flash-lite-latest", model);
+        Assert.AreEqual(expected, EngineModelSelector.ParseEngine(alias));
     }
 
     [TestMethod]
-    public void SelectEngineAndModel_UsesEngineSpecificDefaultModels()
+    public void ParseEngine_ThrowsOnUnknownEngine()
     {
-        // Test Grok engine default
-        var (grokEngine, grokModel) = EngineModelSelector.SelectEngineAndModel("grok", null);
-        Assert.AreEqual("grok", grokEngine);
-        Assert.AreEqual("grok-4-latest", grokModel);
+        var ex = Assert.ThrowsExactly<ArgumentException>(() => EngineModelSelector.ParseEngine("llama"));
 
-        // Test GPT engine default
-        var (gptEngine, gptModel) = EngineModelSelector.SelectEngineAndModel("gpt", null);
-        Assert.AreEqual("gpt", gptEngine);
-        Assert.AreEqual("gpt-4o-mini", gptModel);
-
-        // Test Gemini engine default
-        var (geminiEngine, geminiModel) = EngineModelSelector.SelectEngineAndModel("gemini", null);
-        Assert.AreEqual("gemini", geminiEngine);
-        Assert.AreEqual("gemini-flash-lite-latest", geminiModel);
+        StringAssert.Contains(ex.Message, "llama");
+        StringAssert.Contains(ex.Message, "gemini");
     }
 
     [TestMethod]
-    public void GetEnvironmentVariableName_ReturnsCorrectVariables()
+    [DataRow(TranslationEngine.Gemini, "GEMINI_API_KEY")]
+    [DataRow(TranslationEngine.Gpt, "OPENAI_API_KEY")]
+    [DataRow(TranslationEngine.Grok, "GROK_API_KEY")]
+    public void GetApiKeyVariableName_ReturnsCorrectVariables(TranslationEngine engine, string expected)
     {
-        Assert.AreEqual("GEMINI_API_KEY", EngineModelSelector.GetEnvironmentVariableName("gemini"));
-        Assert.AreEqual("OPENAI_API_KEY", EngineModelSelector.GetEnvironmentVariableName("gpt"));
-        Assert.AreEqual("GROK_API_KEY", EngineModelSelector.GetEnvironmentVariableName("grok"));
-    }
-
-    [TestMethod]
-    public void SelectEngineAndModel_NormalizesEngineNames()
-    {
-        Assert.AreEqual("gpt", EngineModelSelector.SelectEngineAndModel("chatgpt", "test-model").engine);
-        Assert.AreEqual("gpt", EngineModelSelector.SelectEngineAndModel("openai", "test-model").engine);
-        Assert.AreEqual("grok", EngineModelSelector.SelectEngineAndModel("grok-ai", "test-model").engine);
-        Assert.AreEqual("grok", EngineModelSelector.SelectEngineAndModel("grokai", "test-model").engine);
-        Assert.AreEqual("grok", EngineModelSelector.SelectEngineAndModel("x-ai", "test-model").engine);
-        Assert.AreEqual("grok", EngineModelSelector.SelectEngineAndModel("xai", "test-model").engine);
+        Assert.AreEqual(expected, EngineModelSelector.GetApiKeyVariableName(engine));
     }
 }

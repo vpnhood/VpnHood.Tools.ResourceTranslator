@@ -1,8 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using VpnHood.ResourceTranslator.Translators;
 
-namespace VpnHood.ResourceTranslator.Models;
+namespace VpnHood.ResourceTranslator.Translation;
 
 public static class AiResponseParser
 {

@@ -1,8 +1,7 @@
 using OpenAI;
 using OpenAI.Chat;
-using VpnHood.ResourceTranslator.Models;
 
-namespace VpnHood.ResourceTranslator.Translators;
+namespace VpnHood.ResourceTranslator.Translation;
 
 internal sealed class ChatGptTranslator(
     string apiKey,
@@ -13,11 +12,11 @@ internal sealed class ChatGptTranslator(
 
     public async Task<TranslateResult[]> TranslateAsync(PromptOptions promptOptions, CancellationToken cancellationToken)
     {
-        var prompt = TranslateUtils.BuildPrompt(promptOptions);
+        var prompt = PromptBuilder.BuildPrompt(promptOptions);
         var chatClient = _client.GetChatClient(model);
 
         var messages = new List<ChatMessage> {
-            ChatMessage.CreateSystemMessage(TranslateUtils.BuildSystemPrompt()),
+            ChatMessage.CreateSystemMessage(PromptBuilder.BuildSystemPrompt()),
             ChatMessage.CreateUserMessage(prompt)
         };
 

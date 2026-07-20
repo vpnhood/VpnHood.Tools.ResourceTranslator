@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace VpnHood.ResourceTranslator.Models;
+namespace VpnHood.ResourceTranslator.Watch;
 
 internal class WatchFile
 {

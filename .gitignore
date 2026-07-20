@@ -361,4 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/VpnHood.ResourceTranslator/Properties/launchSettings.json
+**/Properties/launchSettings.json
+
+# Local NuGet output from `dotnet pack`
+/artifacts/
+

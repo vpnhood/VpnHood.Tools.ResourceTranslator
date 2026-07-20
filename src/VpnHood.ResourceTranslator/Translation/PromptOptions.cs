@@ -1,4 +1,4 @@
-namespace VpnHood.ResourceTranslator.Models;
+namespace VpnHood.ResourceTranslator.Translation;
 
 public class PromptOptions
 {

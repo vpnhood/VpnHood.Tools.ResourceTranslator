@@ -2,38 +2,40 @@
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
-		<TargetFramework>net10.0</TargetFramework>
 		<AssemblyName>vhtranslator</AssemblyName>
+		<RootNamespace>VpnHood.ResourceTranslator</RootNamespace>
 	</PropertyGroup>
 
+	<!-- Ship as a .NET global/local tool: `dotnet tool install -g VpnHood.ResourceTranslator` -->
 	<PropertyGroup>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<IncludeSymbols>True</IncludeSymbols>
-		<SymbolPackageFormat>symbols.nupkg</SymbolPackageFormat>
-		<LangVersion>latest</LangVersion>
-	</PropertyGroup>
-
-	<PropertyGroup>
-		<PackageTags>Vpn VpnHood ResourceTranslator</PackageTags>
-		<Company>OmegaHood LLC</Company>
-		<Copyright>© OmegaHood LLC. All rights reserved.</Copyright>
-		<PackageProjectUrl>https://github.com/vpnhood/VpnHood.ResourceTranslator</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/vpnhood/VpnHood.ResourceTranslator</RepositoryUrl>
-		<Version>1.0.2</Version>
-		<FileVersion>$([System.DateTime]::Now.ToString("yyyy.M.d.HHmm"))</FileVersion>
+		<PackAsTool>true</PackAsTool>
+		<ToolCommandName>vhtranslator</ToolCommandName>
+		<PackageId>VpnHood.ResourceTranslator</PackageId>
+		<Title>VpnHood Resource Translator</Title>
+		<Description>AI-powered i18n resource translator for JSON and Microsoft .resx files. Translates only what changed, preserves placeholders, HTML tags and formatting, and supports Google Gemini, OpenAI and Grok engines.</Description>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Content Include="translation-prompt.txt">
+		<PackageReference Include="Mscc.GenerativeAI" />
+		<PackageReference Include="OpenAI" />
+		<PackageReference Include="System.CommandLine" />
+		<PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
+	</ItemGroup>
+
+	<!-- The default prompt template travels with the tool. -->
+	<ItemGroup>
+		<Content Include="Resources\translation-prompt.txt">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>
 
+	<!-- Files referenced by the package metadata in Directory.Build.props. -->
 	<ItemGroup>
-		<PackageReference Include="Mscc.GenerativeAI" Version="3.0.0" />
-		<PackageReference Include="OpenAI" Version="2.8.0" />
-		<PackageReference Include="System.CommandLine" Version="2.0.9" />
+		<None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="VpnHood.ResourceTranslator.Tests" />
 	</ItemGroup>
 
 </Project>

@@ -1,0 +1,60 @@
+name: Publish
+
+# Tag a release to publish, e.g.:
+#   git tag v1.1.0 && git push origin v1.1.0
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Package version to publish (e.g. 1.1.0)'
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # A tag is the single source of truth for the released version.
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Publishing version $VERSION"
+
+      - name: Build
+        run: dotnet build VpnHood.ResourceTranslator.slnx --configuration Release
+
+      - name: Test
+        run: dotnet test VpnHood.ResourceTranslator.slnx --configuration Release --no-build
+
+      - name: Pack
+        run: >
+          dotnet pack src/VpnHood.ResourceTranslator/VpnHood.ResourceTranslator.csproj
+          --configuration Release
+          -p:Version=${{ steps.version.outputs.version }}
+          --output ./artifacts
+
+      - name: Push to NuGet
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: >
+          dotnet nuget push "./artifacts/*.nupkg"
+          --api-key "$NUGET_API_KEY"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate

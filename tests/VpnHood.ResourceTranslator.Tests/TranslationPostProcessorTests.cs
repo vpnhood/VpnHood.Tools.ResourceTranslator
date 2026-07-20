@@ -1,14 +1,14 @@
-using VpnHood.ResourceTranslator.Models;
+using VpnHood.ResourceTranslator.Translation;
 
-namespace VpnHood.ResourceTranslator.Test;
+namespace VpnHood.ResourceTranslator.Tests;
 
 [TestClass]
-public sealed class TranslateUtilsTests
+public sealed class TranslationPostProcessorTests
 {
     [TestMethod]
     public void ExtractPlaceholders_FindsAllTokens()
     {
-        var placeholders = TranslateUtils.ExtractPlaceholders("Hello {username}, you have {count} items.");
+        var placeholders = TranslationPostProcessor.ExtractPlaceholders("Hello {username}, you have {count} items.");
 
         CollectionAssert.AreEqual(new[] { "{username}", "{count}" }, placeholders);
     }
@@ -16,48 +16,52 @@ public sealed class TranslateUtilsTests
     [TestMethod]
     public void ExtractPlaceholders_ReturnsEmptyForTextWithoutTokens()
     {
-        Assert.AreEqual(0, TranslateUtils.ExtractPlaceholders("No tokens here").Count);
-        Assert.AreEqual(0, TranslateUtils.ExtractPlaceholders(string.Empty).Count);
+        Assert.AreEqual(0, TranslationPostProcessor.ExtractPlaceholders("No tokens here").Count);
+        Assert.AreEqual(0, TranslationPostProcessor.ExtractPlaceholders(string.Empty).Count);
     }
 
     [TestMethod]
     public void ExtractPlaceholders_IgnoresUnclosedBraces()
     {
-        var placeholders = TranslateUtils.ExtractPlaceholders("Broken {token");
+        var placeholders = TranslationPostProcessor.ExtractPlaceholders("Broken {token");
 
         Assert.AreEqual(0, placeholders.Count);
     }
 
     [TestMethod]
-    public void PostProcessTranslation_TrimsAndRemovesWrappingQuotes()
+    public void PostProcess_TrimsAndRemovesWrappingQuotes()
     {
-        Assert.AreEqual("Bonjour", TranslateUtils.PostProcessTranslation("Hello", " \"Bonjour\" "));
-        Assert.AreEqual("Bonjour", TranslateUtils.PostProcessTranslation("Hello", "'Bonjour'"));
-        Assert.AreEqual("Bonjour", TranslateUtils.PostProcessTranslation("Hello", "`Bonjour`"));
+        Assert.AreEqual("Bonjour", TranslationPostProcessor.PostProcess("Hello", " \"Bonjour\" "));
+        Assert.AreEqual("Bonjour", TranslationPostProcessor.PostProcess("Hello", "'Bonjour'"));
+        Assert.AreEqual("Bonjour", TranslationPostProcessor.PostProcess("Hello", "`Bonjour`"));
     }
 
     [TestMethod]
-    public void PostProcessTranslation_AppendsMissingPlaceholders()
+    public void PostProcess_AppendsMissingPlaceholders()
     {
-        var result = TranslateUtils.PostProcessTranslation("Hello {username}!", "Bonjour !");
+        var result = TranslationPostProcessor.PostProcess("Hello {username}!", "Bonjour !");
 
         Assert.AreEqual("Bonjour ! {username}", result);
     }
 
     [TestMethod]
-    public void PostProcessTranslation_KeepsExistingPlaceholders()
+    public void PostProcess_KeepsExistingPlaceholders()
     {
-        var result = TranslateUtils.PostProcessTranslation("Hello {username}!", "Bonjour {username} !");
+        var result = TranslationPostProcessor.PostProcess("Hello {username}!", "Bonjour {username} !");
 
         Assert.AreEqual("Bonjour {username} !", result);
     }
 
     [TestMethod]
-    public void PostProcessTranslation_ReturnsEmptyForNull()
+    public void PostProcess_ReturnsEmptyForNull()
     {
-        Assert.AreEqual(string.Empty, TranslateUtils.PostProcessTranslation("Hello", null));
+        Assert.AreEqual(string.Empty, TranslationPostProcessor.PostProcess("Hello", null));
     }
+}
 
+[TestClass]
+public sealed class PromptBuilderTests
+{
     [TestMethod]
     public void BuildPrompt_ContainsPromptAndItems()
     {
@@ -73,10 +77,28 @@ public sealed class TranslateUtilsTests
             ]
         };
 
-        var prompt = TranslateUtils.BuildPrompt(options);
+        var prompt = PromptBuilder.BuildPrompt(options);
 
         StringAssert.Contains(prompt, "Translate the following items.");
         StringAssert.Contains(prompt, "GREETING");
         StringAssert.Contains(prompt, "Hello");
+    }
+
+    [TestMethod]
+    public void BuildOptions_AppendsExtraPromptUnderGuidelinesHeading()
+    {
+        var options = PromptBuilder.BuildOptions([], "Base prompt.", "Keep VpnHood untranslated.");
+
+        StringAssert.Contains(options.Prompt, "Base prompt.");
+        StringAssert.Contains(options.Prompt, "Additional guidelines:");
+        StringAssert.Contains(options.Prompt, "Keep VpnHood untranslated.");
+    }
+
+    [TestMethod]
+    public void BuildOptions_OmitsGuidelinesWhenNoExtraPrompt()
+    {
+        var options = PromptBuilder.BuildOptions([], "Base prompt.", extraPrompt: null);
+
+        Assert.IsFalse(options.Prompt.Contains("Additional guidelines:", StringComparison.Ordinal));
     }
 }

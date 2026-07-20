@@ -1,8 +1,7 @@
-﻿using VpnHood.ResourceTranslator.Models;
 
-namespace VpnHood.ResourceTranslator.Translators;
+namespace VpnHood.ResourceTranslator.Translation;
 
-internal interface ITranslator
+public interface ITranslator
 {
     Task<TranslateResult[]> TranslateAsync(PromptOptions promptOptions, CancellationToken cancellationToken);
 }

@@ -1,64 +1,97 @@
-namespace VpnHood.ResourceTranslator.Models;
+namespace VpnHood.ResourceTranslator.Translation;
 
+/// <summary>
+/// Resolves which engine and model to use from (optionally absent) user input.
+/// The engine is inferred from the model name when it is not stated explicitly.
+/// </summary>
 public static class EngineModelSelector
 {
-    private const string DefaultEngine = "gemini";
+    private const TranslationEngine DefaultEngine = TranslationEngine.Gemini;
 
-    public static (string engine, string model) SelectEngineAndModel(string? requestedEngine, string? requestedModel)
+    private static readonly Dictionary<string, TranslationEngine> EngineAliases = new(StringComparer.OrdinalIgnoreCase) {
+        ["gemini"] = TranslationEngine.Gemini,
+        ["google"] = TranslationEngine.Gemini,
+        ["gpt"] = TranslationEngine.Gpt,
+        ["chatgpt"] = TranslationEngine.Gpt,
+        ["openai"] = TranslationEngine.Gpt,
+        ["grok"] = TranslationEngine.Grok,
+        ["grok-ai"] = TranslationEngine.Grok,
+        ["grokai"] = TranslationEngine.Grok,
+        ["x-ai"] = TranslationEngine.Grok,
+        ["xai"] = TranslationEngine.Grok
+    };
+
+    /// <summary>Engine names accepted on the command line, for help text and error messages.</summary>
+    public static IReadOnlyCollection<string> PublicEngineNames { get; } = ["gemini", "gpt", "grok"];
+
+    public static EngineSelection Select(string? requestedEngine, string? requestedModel)
     {
-        // If engine is not explicitly set, auto-detect from model name
         var engine = string.IsNullOrWhiteSpace(requestedEngine)
             ? DetectEngineFromModel(requestedModel)
-            : NormalizeEngine(requestedEngine);
+            : ParseEngine(requestedEngine);
 
         var model = string.IsNullOrWhiteSpace(requestedModel)
-            ? GetDefaultModelForEngine(engine)
+            ? GetDefaultModel(engine)
             : requestedModel;
 
-        return (engine, model);
+        return new EngineSelection(engine, model);
     }
 
-    private static string GetDefaultModelForEngine(string engine)
+    /// <summary>Maps an engine name or alias onto <see cref="TranslationEngine" />, failing loudly when unknown.</summary>
+    public static TranslationEngine ParseEngine(string engine)
+    {
+        return TryParseEngine(engine, out var parsed)
+            ? parsed
+            : throw new ArgumentException(DescribeUnknownEngine(engine), nameof(engine));
+    }
+
+    public static bool TryParseEngine(string? engine, out TranslationEngine parsed)
+    {
+        if (!string.IsNullOrWhiteSpace(engine))
+            return EngineAliases.TryGetValue(engine.Trim(), out parsed);
+
+        parsed = default;
+        return false;
+    }
+
+    /// <summary>Message for an unrecognised engine, without the exception's parameter suffix.</summary>
+    public static string DescribeUnknownEngine(string? engine)
+    {
+        return $"Unknown engine '{engine}'. Supported engines: {string.Join(", ", PublicEngineNames)}.";
+    }
+
+    public static string GetDefaultModel(TranslationEngine engine)
     {
         return engine switch {
-            "grok" => "grok-4-latest",
-            "gpt" => "gpt-4o-mini",
-            _ => "gemini-flash-lite-latest"
+            TranslationEngine.Grok => "grok-4-latest",
+            TranslationEngine.Gpt => "gpt-4o-mini",
+            TranslationEngine.Gemini => "gemini-flash-lite-latest",
+            _ => throw new ArgumentOutOfRangeException(nameof(engine), engine, "Unhandled engine.")
         };
     }
 
-    private static string DetectEngineFromModel(string? model)
+    public static string GetApiKeyVariableName(TranslationEngine engine)
+    {
+        return engine switch {
+            TranslationEngine.Gpt => "OPENAI_API_KEY",
+            TranslationEngine.Grok => "GROK_API_KEY",
+            TranslationEngine.Gemini => "GEMINI_API_KEY",
+            _ => throw new ArgumentOutOfRangeException(nameof(engine), engine, "Unhandled engine.")
+        };
+    }
+
+    private static TranslationEngine DetectEngineFromModel(string? model)
     {
         if (string.IsNullOrWhiteSpace(model))
             return DefaultEngine;
 
-        var modelLower = model.ToLowerInvariant();
+        if (model.Contains("gemini", StringComparison.OrdinalIgnoreCase))
+            return TranslationEngine.Gemini;
 
-        if (modelLower.Contains("gemini"))
-            return "gemini";
+        if (model.Contains("grok", StringComparison.OrdinalIgnoreCase))
+            return TranslationEngine.Grok;
 
-        if (modelLower.Contains("grok"))
-            return "grok";
-
-        // Default to ChatGPT for all other models
-        return "gpt";
-    }
-
-    private static string NormalizeEngine(string engine)
-    {
-        return engine.ToLowerInvariant() switch {
-            "chatgpt" or "openai" => "gpt",
-            "grok-ai" or "grokai" or "x-ai" or "xai" => "grok",
-            var normalized => normalized
-        };
-    }
-
-    public static string GetEnvironmentVariableName(string engine)
-    {
-        return engine.ToLowerInvariant() switch {
-            "gpt" or "chatgpt" => "OPENAI_API_KEY",
-            "grok" or "grok-ai" or "x-ai" => "GROK_API_KEY",
-            _ => "GEMINI_API_KEY" // fallback to Gemini
-        };
+        // Everything else is assumed to be an OpenAI-compatible chat model.
+        return TranslationEngine.Gpt;
     }
 }

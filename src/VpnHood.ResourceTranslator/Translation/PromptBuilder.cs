@@ -1,14 +1,35 @@
 using System.Text;
 using System.Text.Json;
-using VpnHood.ResourceTranslator.Translators;
 
-namespace VpnHood.ResourceTranslator.Models;
+namespace VpnHood.ResourceTranslator.Translation;
 
-public static class TranslateUtils
+/// <summary>
+/// Builds the system and user prompts sent to the AI engines. The models are asked for a bare
+/// JSON array; the shape is demonstrated by example because that survives model drift better
+/// than a prose description.
+/// </summary>
+public static class PromptBuilder
 {
     private static readonly JsonSerializerOptions IndentedSerializerOptions = new() {
         WriteIndented = true
     };
+
+    private static readonly TranslateResult[] SampleResults = [
+        new() {
+            SourceLanguage = "en",
+            TargetLanguage = "fr",
+            Key = "Key1",
+            SourceText = "SourceText1",
+            TranslatedText = "TranslatedText1"
+        },
+        new() {
+            SourceLanguage = "en",
+            TargetLanguage = "it",
+            Key = "Key2",
+            SourceText = "SourceText2",
+            TranslatedText = "TranslatedText2"
+        }
+    ];
 
     public static string BuildSystemPrompt()
     {
@@ -22,29 +43,12 @@ public static class TranslateUtils
 
     public static string BuildPrompt(PromptOptions options)
     {
-        var sample = new TranslateResult[] {
-            new() {
-                SourceLanguage = "en",
-                TargetLanguage = "fr",
-                Key = "Key1",
-                SourceText = "SourceText1",
-                TranslatedText = "TranslatedText1"
-            },
-            new() {
-                SourceLanguage = "en",
-                TargetLanguage = "it",
-                Key = "Key2",
-                SourceText = "SourceText2",
-                TranslatedText = "TranslatedText2"
-            }
-        };
-
         var sb = new StringBuilder();
         sb.AppendLine(options.Prompt);
         sb.AppendLine();
         sb.AppendLine("IMPORTANT: Return ONLY a JSON array (starting with '[' and ending with ']'). Do not wrap it in any other object.");
         sb.AppendLine("Expected output format:");
-        sb.AppendLine(JsonSerializer.Serialize(sample, IndentedSerializerOptions));
+        sb.AppendLine(JsonSerializer.Serialize(SampleResults, IndentedSerializerOptions));
         sb.AppendLine();
         sb.AppendLine("Items to translate:");
         sb.AppendLine(JsonSerializer.Serialize(options.Items, IndentedSerializerOptions));
@@ -52,47 +56,22 @@ public static class TranslateUtils
         return sb.ToString();
     }
 
-    public static string PostProcessTranslation(string source, string? translated)
+    /// <summary>
+    /// Combines the built-in prompt template with optional project-specific guidelines.
+    /// </summary>
+    public static PromptOptions BuildOptions(TranslateItem[] items, string basePrompt, string? extraPrompt)
     {
-        if (translated == null)
-            return string.Empty;
+        var promptBuilder = new StringBuilder(basePrompt);
 
-        translated = translated.Trim();
-
-        // Remove wrapping quotes/backticks if present
-        if (translated.Length >= 2 &&
-            ((translated.StartsWith('"') && translated.EndsWith('"')) ||
-             (translated.StartsWith('\'') && translated.EndsWith('\'')) ||
-             (translated.StartsWith('`') && translated.EndsWith('`')))) {
-            translated = translated[1..^1];
+        if (!string.IsNullOrWhiteSpace(extraPrompt)) {
+            promptBuilder.AppendLine();
+            promptBuilder.AppendLine("Additional guidelines:");
+            promptBuilder.AppendLine(extraPrompt);
         }
 
-        // Ensure placeholders like {x} remain present; append missing ones to avoid breaking runtime formatting
-        foreach (var token in ExtractPlaceholders(source)) {
-            if (!translated.Contains(token, StringComparison.Ordinal))
-                translated = translated + (translated.EndsWith(' ') ? string.Empty : " ") + token;
-        }
-
-        return translated;
-    }
-
-    public static List<string> ExtractPlaceholders(string s)
-    {
-        var list = new List<string>();
-        if (string.IsNullOrEmpty(s))
-            return list;
-
-        for (var i = 0; i < s.Length; i++) {
-            if (s[i] != '{')
-                continue;
-
-            var j = s.IndexOf('}', i + 1);
-            if (j > i) {
-                list.Add(s.Substring(i, j - i + 1));
-                i = j;
-            }
-        }
-
-        return list;
+        return new PromptOptions {
+            Prompt = promptBuilder.ToString(),
+            Items = items
+        };
     }
 }

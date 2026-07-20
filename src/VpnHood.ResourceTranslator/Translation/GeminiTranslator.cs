@@ -1,8 +1,7 @@
 using Mscc.GenerativeAI;
 using Mscc.GenerativeAI.Types;
-using VpnHood.ResourceTranslator.Models;
 
-namespace VpnHood.ResourceTranslator.Translators;
+namespace VpnHood.ResourceTranslator.Translation;
 
 internal sealed class GeminiTranslator(
     string apiKey,
@@ -13,7 +12,7 @@ internal sealed class GeminiTranslator(
 
     public async Task<TranslateResult[]> TranslateAsync(PromptOptions promptOptions, CancellationToken cancellationToken)
     {
-        var prompt = TranslateUtils.BuildPrompt(promptOptions);
+        var prompt = PromptBuilder.BuildPrompt(promptOptions);
 
         var geminiModel = _googleAi.GenerativeModel(model: model);
         var response = await geminiModel.GenerateContent(prompt, new GenerationConfig {

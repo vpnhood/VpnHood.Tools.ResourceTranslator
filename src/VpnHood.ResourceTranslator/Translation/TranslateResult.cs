@@ -1,4 +1,4 @@
-﻿namespace VpnHood.ResourceTranslator.Translators;
+﻿namespace VpnHood.ResourceTranslator.Translation;
 
 public class TranslateResult
 {

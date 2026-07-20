@@ -11,15 +11,16 @@
 # Flow:
 #   1. Refuse a dirty tree, and refuse to publish from anywhere but main.
 #   2. Pull main (picks up anything published from another machine).
-#   3. Resolve the version from Directory.Build.props, or set it when -Version is passed, and
-#      commit that bump.
+#   3. Resolve the version. Released versions are recorded as v* tags, so those are the source of
+#      truth: a hand-set VersionPrefix that is ahead of everything released is adopted, otherwise
+#      the patch is bumped automatically. Either way the chosen version is committed.
 #   4. Run the tests locally. A tag is awkward to retract once pushed, so a broken build should
 #      fail here rather than after the tag exists.
 #   5. Push main, then push an annotated tag v<version>, which starts the publish workflow.
 #
 # Usage:
-#   ./_publish.ps1                  # publish the version already in Directory.Build.props
-#   ./_publish.ps1 -Version 1.2.0   # bump to 1.2.0, commit, then publish
+#   ./_publish.ps1                  # auto-bump the patch and publish (1.1.0 -> 1.1.1)
+#   ./_publish.ps1 -Version 1.2.0   # publish an explicit version
 #   ./_publish.ps1 -SkipTests       # skip the local test run (CI still runs them)
 #
 # Requires the GitHub CLI (gh) authenticated for the vpnhood org.
@@ -57,29 +58,43 @@ try {
 		throw "_publish: repository secret NUGET_USER is not set on $repo — the OIDC login step needs it.";
 	}
 
-	# Regex rather than an XML round-trip, so the file's formatting and comments survive untouched.
+	# Released versions are recorded as tags, so they are the source of truth for "what shipped".
+	git fetch --tags --quiet origin;
+	if ($LASTEXITCODE -ne 0) { throw "_publish: git fetch --tags failed (exit $LASTEXITCODE)."; }
+
 	$propsText = Get-Content $propsFile -Raw;
-	if ($Version) {
-		if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw "_publish: -Version must look like X.Y.Z (got '$Version')."; }
-
-		$propsText = [regex]::Replace($propsText, '<VersionPrefix>[^<]*</VersionPrefix>', "<VersionPrefix>$Version</VersionPrefix>");
-		Set-Content $propsFile -Value $propsText -NoNewline;
-
-		git add $propsFile;
-		git commit -m "Publish $Version";
-		if ($LASTEXITCODE -ne 0) { throw "_publish: git commit of the version bump failed (exit $LASTEXITCODE)."; }
-	}
-
 	if ($propsText -notmatch '<VersionPrefix>([^<]+)</VersionPrefix>') {
 		throw "_publish: could not read VersionPrefix from $propsFile.";
 	}
-	$publishVersion = $Matches[1];
+	$currentVersion = [version]$Matches[1];
+
+	$releasedVersions = @(git tag --list "v*.*.*" |
+		ForEach-Object { $_.TrimStart('v') } |
+		Where-Object { $_ -match '^\d+\.\d+\.\d+$' } |
+		ForEach-Object { [version]$_ });
+	$latestReleased = if ($releasedVersions.Count) { ($releasedVersions | Sort-Object -Descending)[0] } else { $null };
+
+	# Same "adopt or bump" rule the monorepo's publish module uses: honour a hand-set version when
+	# it is ahead of everything released, otherwise increment the patch automatically so a plain
+	# ./_publish.ps1 always has a free version to ship.
+	if ($Version) {
+		if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw "_publish: -Version must look like X.Y.Z (got '$Version')."; }
+		$publishVersion = [version]$Version;
+	}
+	elseif ($null -eq $latestReleased -or $currentVersion -gt $latestReleased) {
+		$publishVersion = $currentVersion;
+	}
+	else {
+		$publishVersion = [version]::new($latestReleased.Major, $latestReleased.Minor, $latestReleased.Build + 1);
+	}
+
 	$tag = "v$publishVersion";
+	Write-Host "Publishing $publishVersion (last released: $(if ($latestReleased) { $latestReleased } else { 'none' }))." -ForegroundColor Cyan;
 
 	# A tag is immutable in practice: CI derives the package version from it, and NuGet refuses to
 	# overwrite a published version. Refuse up front rather than fail halfway.
 	git rev-parse -q --verify "refs/tags/$tag" > $null 2>&1;
-	if ($LASTEXITCODE -eq 0) { throw "_publish: tag $tag already exists locally. Bump the version instead of reusing a tag."; }
+	if ($LASTEXITCODE -eq 0) { throw "_publish: tag $tag already exists locally. Pass a higher -Version."; }
 
 	$remoteTag = git ls-remote --tags origin "refs/tags/$tag";
 	if ($remoteTag) { throw "_publish: tag $tag already exists on origin. Bump the version instead of reusing a tag."; }
@@ -88,6 +103,17 @@ try {
 		Write-Host "Running tests ..." -ForegroundColor Magenta;
 		dotnet test $solution --configuration Release;
 		if ($LASTEXITCODE -ne 0) { throw "_publish: tests failed (exit $LASTEXITCODE) — nothing was tagged or pushed."; }
+	}
+
+	# Record the version being shipped. Regex rather than an XML round-trip, so the file's
+	# formatting and comments survive untouched.
+	if ("$publishVersion" -ne "$currentVersion") {
+		$propsText = [regex]::Replace($propsText, '<VersionPrefix>[^<]*</VersionPrefix>', "<VersionPrefix>$publishVersion</VersionPrefix>");
+		Set-Content $propsFile -Value $propsText -NoNewline;
+
+		git add $propsFile;
+		git commit -m "Publish $publishVersion";
+		if ($LASTEXITCODE -ne 0) { throw "_publish: git commit of the version bump failed (exit $LASTEXITCODE)."; }
 	}
 
 	git push origin main;

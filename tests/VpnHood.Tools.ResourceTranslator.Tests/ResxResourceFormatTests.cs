@@ -94,13 +94,13 @@ public sealed class ResxResourceFormatTests
     {
         var dir = CreateTempDir();
         var basePath = Path.Combine(dir, "Strings.resx");
-        File.WriteAllText(basePath, SampleResx);
+        await File.WriteAllTextAsync(basePath, SampleResx);
 
         var format = new ResxResourceFormat();
         var targetPath = Path.Combine(dir, "Strings.fr.resx");
 
         // Seed the target with the sample (so the file-ref and comment exist) then translate values.
-        File.WriteAllText(targetPath, SampleResx);
+        await File.WriteAllTextAsync(targetPath, SampleResx);
         var orderedKeys = new List<string> { "Welcome", "Save" };
         var map = new Dictionary<string, string> {
             ["Welcome"] = "Bienvenue, {name} !",
@@ -119,7 +119,7 @@ public sealed class ResxResourceFormatTests
         var doc = XDocument.Load(targetPath);
         var logo = doc.Root!.Elements("data").FirstOrDefault(d => (string?)d.Attribute("name") == "Logo");
         Assert.IsNotNull(logo, "Typed file-ref entry should be preserved.");
-        Assert.AreEqual("System.Resources.ResXFileRef, System.Windows.Forms", (string?)logo!.Attribute("type"));
+        Assert.AreEqual("System.Resources.ResXFileRef, System.Windows.Forms", (string?)logo.Attribute("type"));
 
         var welcome = doc.Root!.Elements("data").First(d => (string?)d.Attribute("name") == "Welcome");
         Assert.AreEqual("shown on home", welcome.Element("comment")?.Value);

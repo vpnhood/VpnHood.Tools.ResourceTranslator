@@ -5,6 +5,7 @@
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
     <File Path="README.md" />
+    <File Path="_publish.ps1" />
   </Folder>
   <Folder Name="/Solution Items/workflows/">
     <File Path=".github/workflows/build.yml" />

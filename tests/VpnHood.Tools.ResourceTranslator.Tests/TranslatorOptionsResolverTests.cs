@@ -130,6 +130,7 @@ public sealed class TranslatorOptionsResolverTests
         var ex = Assert.ThrowsExactly<TranslatorException>(
             () => TranslatorOptionsResolver.Resolve(new CommandLineOptions {
                 BasePath = basePath,
+                // ReSharper disable once AccessToDisposedClosure
                 ExtraPromptPath = Path.Combine(workspace.Path, "missing.txt")
             }));
 

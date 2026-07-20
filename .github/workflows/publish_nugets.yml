@@ -1,0 +1,83 @@
+name: Publish NuGet Packages
+
+# Publishes this repo's NuGet package using the shared cross-repo script in vpnhood/VpnHood
+# (pub/lib/Publish-ModuleNugetPackages.ps1 does the version bump, pack and push). Dispatch from `main`.
+#
+# WHY THIS CALLS THE SHARED SCRIPT INSTEAD OF THE REUSABLE WORKFLOW
+# (pub/MODULE-REPOS.md documents this variant): publishing uses nuget.org Trusted Publishing, and the
+# OIDC token's job_workflow_ref identifies the workflow that REQUESTS it. Requesting it from inside
+# vpnhood/VpnHood's reusable workflow makes nuget.org see that repo's workflow, not this one, and the
+# token exchange fails with "401: No matching trust policy". The NuGet/login step therefore has to
+# live in this repo, and a `uses:` job cannot have steps — so this workflow owns its steps.
+#
+# The nuget.org trusted publishing policy must match: owner `vpnhood`, repository
+# `VpnHood.Tools.ResourceTranslator`, workflow file `publish_nugets.yml` (this file's NAME — renaming
+# it breaks publishing), environment empty. No long-lived NUGET_API_KEY is involved; the only secret
+# is NUGET_USER (a nuget.org profile name).
+#
+# -independentVersion: this is a standalone developer tool, not part of the VPN product's release
+# train, so it keeps its OWN 1.x line and never adopts the monorepo's 8.0.x. Only the build number
+# self-bumps; a minor/major is a hand edit of pub/PubVersion.json + Directory.Build.props.
+
+on:
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: "Publish X.Y.Z-prerelease instead of the stable version (manual escape hatch; normally leave off)"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write   # the shared script pushes the version-bump commit back to this repo
+  id-token: write   # OIDC token for nuget.org Trusted Publishing
+
+jobs:
+  publish:
+    # Same org gate as the monorepo: only vpnhood repos publish these package IDs.
+    if: github.repository_owner == 'vpnhood'
+    runs-on: ubuntu-latest
+    env:
+      DOTNET_NOLOGO: "1"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+    steps:
+      # This repo under module/ — never the workspace root, so the vh/ checkout below can never leak
+      # into the script's recursive packable-project discovery.
+      - name: Checkout module repo
+        uses: actions/checkout@v7
+        with: { path: module, persist-credentials: true }
+
+      # vpnhood/VpnHood ONLY for the pub/ scripts (sparse).
+      - name: Checkout vpnhood/VpnHood publish scripts
+        uses: actions/checkout@v7
+        with:
+          repository: vpnhood/VpnHood
+          ref: develop
+          path: vh
+          sparse-checkout: pub
+
+      - uses: actions/setup-dotnet@v6
+        with: { dotnet-version: "10.0.x" }
+
+      - name: Configure git identity
+        run: |
+          git -C module config user.name "github-actions[bot]"
+          git -C module config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # Short-lived, single-use key (valid one hour). Must be requested from THIS repo — see above.
+      - name: NuGet login (OIDC)
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publish module NuGets
+        shell: pwsh
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+        run: |
+          & "$env:GITHUB_WORKSPACE/vh/pub/lib/Publish-ModuleNugetPackages.ps1" `
+            -moduleDir "$env:GITHUB_WORKSPACE/module" `
+            -branch "${{ github.ref_name }}" `
+            -independentVersion `
+            -prerelease:$("${{ inputs.prerelease }}" -eq "true")

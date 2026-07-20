@@ -366,3 +366,6 @@ FodyWeavers.xsd
 # Local NuGet output from `dotnet pack`
 /artifacts/
 
+
+# Shared publish script pack output
+/pub/bin/

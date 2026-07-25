@@ -57,6 +57,59 @@ public sealed class TranslationPostProcessorTests
     {
         Assert.AreEqual(string.Empty, TranslationPostProcessor.PostProcess("Hello", null));
     }
+
+    private static readonly string Lrm = ((char)0x200E).ToString(); // LEFT-TO-RIGHT MARK
+
+    [TestMethod]
+    public void PostProcess_KeepsLatinExclamationAttachedInRtlOutput()
+    {
+        // Without the mark, the bidi algorithm renders the brand's '!' on the wrong
+        // side of "VpnHood" inside Persian text.
+        var result = TranslationPostProcessor.PostProcess(
+            "Get VpnHood! today", "VpnHood! را دریافت کنید", "fa");
+
+        Assert.AreEqual("VpnHood!" + Lrm + " را دریافت کنید", result);
+    }
+
+    [TestMethod]
+    public void PostProcess_AppendsMarkAtEndOfTextToo()
+    {
+        var result = TranslationPostProcessor.PostProcess("Try VpnHood!", "VpnHood! امتحان کنید VpnHood!", "fa");
+
+        StringAssert.EndsWith(result, "VpnHood!" + Lrm);
+    }
+
+    [TestMethod]
+    public void PostProcess_LeavesLtrTargetsAlone()
+    {
+        Assert.AreEqual("Essayez VpnHood! maintenant",
+            TranslationPostProcessor.PostProcess("Try VpnHood! now", "Essayez VpnHood! maintenant", "fr"));
+    }
+
+    [TestMethod]
+    public void PostProcess_NeverTouchesPunctuationInsideLatinRuns()
+    {
+        // '!' followed by another Latin character (URLs, code) must stay untouched.
+        Assert.AreEqual("wow!yes دیدنی",
+            TranslationPostProcessor.PostProcess("wow!yes nice", "wow!yes دیدنی", "fa"));
+    }
+
+    [TestMethod]
+    public void IsolateLatinPunctuation_IsIdempotent()
+    {
+        var once = TranslationPostProcessor.IsolateLatinPunctuation("VpnHood! متن");
+        Assert.AreEqual(once, TranslationPostProcessor.IsolateLatinPunctuation(once));
+    }
+
+    [TestMethod]
+    public void IsRtlLanguage_MatchesBaseCodesAndRegionVariants()
+    {
+        Assert.IsTrue(TranslationPostProcessor.IsRtlLanguage("fa"));
+        Assert.IsTrue(TranslationPostProcessor.IsRtlLanguage("fa-IR"));
+        Assert.IsTrue(TranslationPostProcessor.IsRtlLanguage("AR"));
+        Assert.IsFalse(TranslationPostProcessor.IsRtlLanguage("de"));
+        Assert.IsFalse(TranslationPostProcessor.IsRtlLanguage(null));
+    }
 }
 
 [TestClass]

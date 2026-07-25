@@ -279,10 +279,10 @@ public sealed class SiteTranslationRunner
 
         var title = document.Title == null
             ? null
-            : TranslationPostProcessor.PostProcess(document.Title, map.GetValueOrDefault(TitleKey, document.Title));
+            : TranslationPostProcessor.PostProcess(document.Title, map.GetValueOrDefault(TitleKey, document.Title), language);
         var description = document.Description == null
             ? null
-            : TranslationPostProcessor.PostProcess(document.Description, map.GetValueOrDefault(DescriptionKey, document.Description));
+            : TranslationPostProcessor.PostProcess(document.Description, map.GetValueOrDefault(DescriptionKey, document.Description), language);
 
         // Only enforceable when the source obeys the rule itself; a source title without the
         // required text is the site's defect, reported separately, not a translation failure.

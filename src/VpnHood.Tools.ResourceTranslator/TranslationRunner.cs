@@ -260,7 +260,7 @@ public sealed class TranslationRunner
             _reporter.Info($"Processing {localeFileName} ({localeCode}) - {changedKeys.Count} changed, {missingCount} missing entries...");
 
         var translatedCount = await TranslateItemsAsync(itemsToTranslate, output, baseFile, translator, prompt,
-            extraPrompt, localeFileName, target.IsRebuild, cancellationToken);
+            extraPrompt, localeFileName, localeCode, target.IsRebuild, cancellationToken);
 
         await _format.SaveAsync(localePath, baseFile.OrderedKeys, output);
 
@@ -280,6 +280,7 @@ public sealed class TranslationRunner
         string prompt,
         string? extraPrompt,
         string localeFileName,
+        string localeCode,
         bool reportProgress,
         CancellationToken cancellationToken)
     {
@@ -308,7 +309,7 @@ public sealed class TranslationRunner
                 }
 
                 var baseText = baseFile.Map.GetValueOrDefault(result.Key, string.Empty);
-                output[result.Key] = TranslationPostProcessor.PostProcess(baseText, result.TranslatedText);
+                output[result.Key] = TranslationPostProcessor.PostProcess(baseText, result.TranslatedText, localeCode);
                 translatedCount++;
             }
 

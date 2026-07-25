@@ -1,19 +1,50 @@
+using System.Text.RegularExpressions;
+
 namespace VpnHood.Tools.ResourceTranslator.Translation;
 
 /// <summary>
 /// Cleans up raw model output before it is written to a resource file. Models tend to wrap
 /// results in quotes and occasionally drop placeholders; both would break the consuming app.
 /// </summary>
-public static class TranslationPostProcessor
+public static partial class TranslationPostProcessor
 {
-    public static string PostProcess(string source, string? translated)
+    private static readonly HashSet<string> RtlLanguages =
+        new(StringComparer.OrdinalIgnoreCase) { "fa", "ar", "he", "ur" };
+
+    public static string PostProcess(string source, string? translated, string? targetLanguage = null)
     {
         if (translated == null)
             return string.Empty;
 
         translated = translated.Trim();
         translated = StripWrappingQuotes(translated);
-        return RestoreMissingPlaceholders(source, translated);
+        translated = RestoreMissingPlaceholders(source, translated);
+
+        if (IsRtlLanguage(targetLanguage))
+            translated = IsolateLatinPunctuation(translated);
+
+        return translated;
+    }
+
+    public static bool IsRtlLanguage(string? languageCode)
+    {
+        if (string.IsNullOrWhiteSpace(languageCode))
+            return false;
+
+        var dash = languageCode.IndexOf('-');
+        return RtlLanguages.Contains(dash > 0 ? languageCode[..dash] : languageCode);
+    }
+
+    /// <summary>
+    /// In RTL text the bidi algorithm pulls a '!' or '?' that trails a Latin word (e.g. the
+    /// brand "VpnHood!") out of the Latin run and renders it on the wrong side of the word.
+    /// An invisible LEFT-TO-RIGHT MARK (U+200E) after the punctuation keeps it attached.
+    /// Only applied when the punctuation is followed by whitespace, an RTL character, or the
+    /// end of the text — never inside Latin sequences like URLs. Idempotent.
+    /// </summary>
+    public static string IsolateLatinPunctuation(string text)
+    {
+        return LatinTrailingPunctuationRegex().Replace(text, "$1\u200E");
     }
 
     /// <summary>Extracts <c>{placeholder}</c> tokens, which must survive translation verbatim.</summary>
@@ -60,4 +91,7 @@ public static class TranslationPostProcessor
 
         return translated;
     }
+
+    [GeneratedRegex(@"([A-Za-z0-9][!?]+)(?=\s|$|[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF])")]
+    private static partial Regex LatinTrailingPunctuationRegex();
 }

@@ -101,4 +101,26 @@ public sealed class PromptBuilderTests
 
         Assert.IsFalse(options.Prompt.Contains("Additional guidelines:", StringComparison.Ordinal));
     }
+
+    [TestMethod]
+    public void BuildPrompt_SendsRealCharactersNotJsonEscapes()
+    {
+        // Escaped HTML in the prompt made Gemini reproduce (and corrupt) the escape
+        // sequences around Persian output; the model must see the actual characters.
+        var options = PromptBuilder.BuildOptions([
+            new TranslateItem {
+                SourceLanguage = "en",
+                TargetLanguage = "fa",
+                Key = "start_contact",
+                Text = "<strong>Contact Us:</strong> reach us at <a href=\"mailto:x@y.z\">x@y.z</a> — толк"
+            }
+        ], basePrompt: "Translate.", extraPrompt: null);
+
+        var prompt = PromptBuilder.BuildPrompt(options);
+
+        StringAssert.Contains(prompt, "<strong>Contact Us:</strong>");
+        StringAssert.Contains(prompt, "— толк");
+        Assert.IsFalse(prompt.Contains("\\u003"), "HTML must not be JSON-escaped in the prompt");
+        Assert.IsFalse(prompt.Contains("\\u2014"), "Non-ASCII must not be JSON-escaped in the prompt");
+    }
 }

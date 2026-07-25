@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace VpnHood.Tools.ResourceTranslator.Translation;
@@ -10,8 +11,14 @@ namespace VpnHood.Tools.ResourceTranslator.Translation;
 /// </summary>
 public static class PromptBuilder
 {
+    // Relaxed escaping is essential here: the default encoder JSON-escapes HTML characters
+    // in source strings (angle brackets become \uXXXX sequences), and models mangle those
+    // escape sequences when reproducing them around non-Latin output (observed: Gemini
+    // corrupted an escaped '>' inside Persian text, making the whole response unparseable).
+    // The model must see real characters.
     private static readonly JsonSerializerOptions IndentedSerializerOptions = new() {
-        WriteIndented = true
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
     private static readonly TranslateResult[] SampleResults = [

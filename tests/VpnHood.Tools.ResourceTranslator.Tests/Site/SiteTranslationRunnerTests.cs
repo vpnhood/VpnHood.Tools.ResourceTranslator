@@ -41,10 +41,14 @@ public class SiteTranslationRunnerTests
 
     private static SiteOptions CreateOptions(TestWorkspace workspace, params string[] dataFiles)
     {
-        return CreateOptionsWithConfig(workspace, configPath: null, dataFiles);
+        return CreateOptionsWithConfig(workspace, configPath: null, dataFiles: dataFiles);
     }
 
-    private static SiteOptions CreateOptionsWithConfig(TestWorkspace workspace, string? configPath, params string[] dataFiles)
+    private static SiteOptions CreateOptionsWithConfig(
+        TestWorkspace workspace,
+        string? configPath,
+        PageBodyMode pageBody = PageBodyMode.Translate,
+        params string[] dataFiles)
     {
         return new SiteOptions {
             RootPath = workspace.Path,
@@ -59,7 +63,8 @@ public class SiteTranslationRunnerTests
             BatchSize = 20,
             TitleMustContain = "VpnHood!",
             ApiKey = "unused",
-            ConfigPath = configPath
+            ConfigPath = configPath,
+            PageBodyMode = pageBody
         };
     }
 
@@ -243,7 +248,8 @@ public class SiteTranslationRunnerTests
         workspace.WriteFile("_data/i18n/en/about.json", """{ "heading": "About us" }""");
         var configPath = workspace.WriteFile("vh_translator/vhtranslator.json", "{}");
 
-        var runner = CreateRunner(CreateOptionsWithConfig(workspace, configPath, "_data/i18n/en"), new FakeTranslator());
+        var runner = CreateRunner(
+            CreateOptionsWithConfig(workspace, configPath, dataFiles: "_data/i18n/en"), new FakeTranslator());
 
         Assert.AreEqual(ExitCodes.Success, await runner.RunAsync());
         Assert.IsTrue(workspace.ReadFile("_data/i18n/fr/home.json").Contains("[fr] Free VPN"));
@@ -358,6 +364,68 @@ public class SiteTranslationRunnerTests
             var results = await _inner.TranslateAsync(promptOptions, cancellationToken);
             return results.Where(result => result.Key != keyToDrop).ToArray();
         }
+    }
+
+    [TestMethod]
+    public async Task Run_copy_mode_keeps_the_body_byte_identical_and_translates_only_metadata()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.WriteFile("index.html", HomePage);
+
+        var translator = new FakeTranslator();
+        var options = CreateOptionsWithConfig(workspace, configPath: null, PageBodyMode.Copy);
+        var runner = CreateRunner(options, translator);
+
+        Assert.AreEqual(ExitCodes.Success, await runner.RunAsync());
+        Assert.IsFalse(translator.TranslatedKeys.Contains("body"), "The model must never see the body");
+
+        var french = workspace.ReadFile("fr/index.html");
+        Assert.IsTrue(french.Contains("title: \"[fr] Free & Open Source VPN – VpnHood!\""));
+        Assert.IsTrue(french.Contains("lang: fr"));
+        Assert.IsTrue(french.Contains("auto_translated: true"));
+        Assert.IsTrue(french.Contains("<h1>Free VPN for everyone who cares about privacy</h1>"),
+            "The body must be the untouched source body (it self-localizes via page.lang)");
+        Assert.IsTrue(french.Contains("{% raw %}"), "Liquid must survive untouched");
+    }
+
+    [TestMethod]
+    public async Task Run_copy_mode_still_rejects_titles_that_lose_the_brand()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.WriteFile("index.html", HomePage);
+
+        var breaking = new FakeTranslator(item => item.Key == "title" ? "VPN gratuit" : $"[fr] {item.Text}");
+        var options = CreateOptionsWithConfig(workspace, configPath: null, PageBodyMode.Copy);
+        var runner = CreateRunner(options, breaking);
+
+        Assert.AreEqual(ExitCodes.VerificationFailed, await runner.RunAsync());
+        Assert.IsFalse(workspace.Exists("fr/index.html"));
+    }
+
+    [TestMethod]
+    public async Task Run_copy_mode_writes_pages_without_metadata_without_calling_the_ai()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.WriteFile("index.html", "---\nlayout: none\n---\n<p>No title, no description.</p>");
+
+        var translator = new FakeTranslator();
+        var options = CreateOptionsWithConfig(workspace, configPath: null, PageBodyMode.Copy);
+
+        Assert.AreEqual(ExitCodes.Success, await CreateRunner(options, translator).RunAsync());
+        Assert.AreEqual(0, translator.CallCount);
+        Assert.IsTrue(workspace.ReadFile("fr/index.html").Contains("<p>No title, no description.</p>"));
+        Assert.IsTrue(workspace.ReadFile("fr/index.html").Contains("lang: fr"));
+    }
+
+    [TestMethod]
+    public void Resolver_rejects_unknown_pageBody_values()
+    {
+        using var workspace = new TestWorkspace();
+        var configPath = workspace.WriteFile("vhtranslator.json",
+            """{ "site": { "languages": ["fr"], "pageBody": "verbatim" } }""");
+
+        Assert.ThrowsExactly<TranslatorException>(() =>
+            SiteOptionsResolver.Resolve(new Cli.CommandLineOptions { ConfigPath = configPath }));
     }
 
     [TestMethod]

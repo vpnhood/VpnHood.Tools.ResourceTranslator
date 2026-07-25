@@ -295,6 +295,15 @@ The `site` section lives in the same `vhtranslator.json`; the top-level `model`,
 | `titleMustContain` | Text every translated page title must keep (typically the brand). Skipped with a warning when the source title itself lacks it |
 | `data` | Key/value resources (e.g. shared UI strings) translated with the resource-file pipeline as part of every site run, into the same languages. Each entry is a file (`_data/i18n/en.json`) or a language folder (`_data/i18n/en`) |
 | `sourceLanguage` | Language of the source pages. Default `en` |
+| `pageBody` | `translate` (default) sends whole page bodies to the model. `copy` keeps bodies byte-identical and translates **only** the front-matter `title`/`description` — for sites whose page text lives in i18n data files (see below) |
+
+**The `copy` + `data` pattern.** When every visible string of a page lives in per-language data
+files (`_data/i18n/en/home.json` rendered via `page.lang`), the pages themselves contain nothing
+to translate except their front-matter title and description. Set `"pageBody": "copy"` and list
+the language folder under `data`: a site run then translates the data files key by key, and
+generates per-language page copies whose bodies are byte-identical by construction — no
+structural verification lottery, a fraction of the tokens, and the `titleMustContain` rule
+still applies.
 
 > **Pin an exact model version** (e.g. `gemini-2.5-flash`, not `-latest`) — when translations
 > ship without review, silent model drift means silent output drift.

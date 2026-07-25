@@ -76,9 +76,20 @@ public static partial class SiteOptionsResolver
             Model = selection.Model,
             BatchSize = batchSize,
             TitleMustContain = site.TitleMustContain,
+            PageBodyMode = ParsePageBodyMode(site.PageBody),
             ExtraPromptPath = ResolveExtraPromptPath(commandLine, config, rootPath),
             ApiKey = ResolveApiKey(commandLine, selection.Engine),
             ConfigPath = config.SourcePath
+        };
+    }
+
+    private static PageBodyMode ParsePageBodyMode(string? value)
+    {
+        return value?.Trim().ToLowerInvariant() switch {
+            null or "" or "translate" => PageBodyMode.Translate,
+            "copy" => PageBodyMode.Copy,
+            _ => throw new TranslatorException(
+                $"Unknown site.pageBody value '{value}'. Use \"translate\" or \"copy\".")
         };
     }
 

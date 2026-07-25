@@ -42,6 +42,15 @@ public sealed record SiteConfig
     public string? SourceLanguage { get; init; }
 
     /// <summary>
+    /// What to do with page bodies: <c>translate</c> (default) sends the whole body to the
+    /// model; <c>copy</c> keeps the body byte-identical and translates only the front-matter
+    /// title and description — for sites whose page text lives in i18n data files and
+    /// self-localizes through the page's <c>lang</c>.
+    /// </summary>
+    [JsonPropertyName("pageBody")]
+    public string? PageBody { get; init; }
+
+    /// <summary>
     /// Text every translated page title must contain (e.g. a brand name). Verification fails
     /// for the page when the translated title lost it.
     /// </summary>

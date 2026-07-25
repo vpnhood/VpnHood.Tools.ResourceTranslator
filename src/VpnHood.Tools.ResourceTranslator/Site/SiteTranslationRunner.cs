@@ -177,6 +177,15 @@ public sealed class SiteTranslationRunner
             return false;
         }
 
+        // Copy mode with no title/description: nothing needs the model at all.
+        if (items.Length == 0) {
+            var copied = document.Compose(null, null, document.Body, language);
+            Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+            await File.WriteAllTextAsync(targetPath, copied, new UTF8Encoding(false), cancellationToken);
+            _reporter.Info($"✓ {targetRelative}: copied (no translatable metadata).");
+            return true;
+        }
+
         var feedback = (string?)null;
         for (var attempt = 1; attempt <= MaxAttemptsPerPage; attempt++) {
             var prompt = PromptBuilder.BuildOptions(items, ComposePrompt(basePrompt, feedback), extraPrompt);
@@ -221,7 +230,10 @@ public sealed class SiteTranslationRunner
         if (document.Description != null)
             items.Add(NewItem(DescriptionKey, document.Description, language));
 
-        items.Add(NewItem(BodyKey, masker.Masked, language));
+        // In copy mode the body ships byte-identical, so the model never sees it.
+        if (_options.PageBodyMode == PageBodyMode.Translate)
+            items.Add(NewItem(BodyKey, masker.Masked, language));
+
         return items.ToArray();
     }
 
@@ -248,8 +260,9 @@ public sealed class SiteTranslationRunner
             .GroupBy(result => result.Key, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.First().TranslatedText, StringComparer.Ordinal);
 
+        var translateBody = _options.PageBodyMode == PageBodyMode.Translate;
         var maskedBody = map.GetValueOrDefault(BodyKey);
-        if (string.IsNullOrWhiteSpace(maskedBody)) {
+        if (translateBody && string.IsNullOrWhiteSpace(maskedBody)) {
             errors = ["The response contains no 'body' item."];
             return string.Empty;
         }
@@ -261,7 +274,8 @@ public sealed class SiteTranslationRunner
         if (document.Description != null && !map.ContainsKey(DescriptionKey))
             errorList.Add("The response contains no 'description' item.");
 
-        errorList.AddRange(masker.Validate(maskedBody));
+        if (translateBody)
+            errorList.AddRange(masker.Validate(maskedBody!));
 
         var title = document.Title == null
             ? null
@@ -282,7 +296,13 @@ public sealed class SiteTranslationRunner
             return string.Empty;
         }
 
-        var body = masker.Unmask(maskedBody.Trim());
+        // Copy mode: the body is the source body by construction, so there is nothing to verify.
+        if (!translateBody) {
+            errors = errorList;
+            return document.Compose(title, description, document.Body, language);
+        }
+
+        var body = masker.Unmask(maskedBody!.Trim());
         errorList.AddRange(PageVerifier.Verify(document.Body, body));
 
         errors = errorList;

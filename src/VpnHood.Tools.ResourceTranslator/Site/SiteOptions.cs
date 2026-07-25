@@ -2,6 +2,19 @@ using VpnHood.Tools.ResourceTranslator.Translation;
 
 namespace VpnHood.Tools.ResourceTranslator.Site;
 
+/// <summary>How a site run treats page bodies.</summary>
+public enum PageBodyMode
+{
+    /// <summary>The whole body is sent to the model and structurally verified.</summary>
+    Translate,
+
+    /// <summary>
+    /// The body is copied byte-identically; only the front-matter title and description are
+    /// translated. For pages whose text lives in i18n data files.
+    /// </summary>
+    Copy
+}
+
 /// <summary>
 /// Fully resolved settings for a site run: command-line values merged over the config file's
 /// <c>site</c> section, with defaults applied and paths made absolute.
@@ -28,6 +41,9 @@ public sealed class SiteOptions
 
     /// <summary>Text every translated title must keep (typically the brand name), or null.</summary>
     public string? TitleMustContain { get; init; }
+
+    /// <summary>What to do with page bodies. Default: translate them.</summary>
+    public PageBodyMode PageBodyMode { get; init; } = PageBodyMode.Translate;
 
     /// <summary>Absolute path to extra prompt instructions, or null when none apply.</summary>
     public string? ExtraPromptPath { get; init; }

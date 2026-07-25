@@ -94,6 +94,7 @@ public class SiteTranslationRunnerTests
         var french = workspace.ReadFile("fr/index.html");
         Assert.IsTrue(french.Contains("lang: fr"));
         Assert.IsTrue(french.Contains("auto_translated: true"));
+        Assert.IsTrue(french.Contains("permalink: /fr/"), "The served URL must be pinned explicitly");
         Assert.IsTrue(french.Contains("title: \"[fr] Free & Open Source VPN – VpnHood!\""));
         Assert.IsTrue(french.Contains("{% include header.html %}"), "Liquid tags must survive round-trip");
         Assert.IsTrue(french.Contains("{% raw %}"));
@@ -415,6 +416,43 @@ public class SiteTranslationRunnerTests
         Assert.AreEqual(0, translator.CallCount);
         Assert.IsTrue(workspace.ReadFile("fr/index.html").Contains("<p>No title, no description.</p>"));
         Assert.IsTrue(workspace.ReadFile("fr/index.html").Contains("lang: fr"));
+    }
+
+    [TestMethod]
+    public async Task Run_supports_a_collection_folder_output_pattern()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.WriteFile("index.html", HomePage);
+        workspace.WriteFile("free-vpn/download/index.html", DownloadPage);
+
+        var options = new SiteOptions {
+            RootPath = workspace.Path,
+            PagePatterns = ["**/index.html"],
+            ExcludePatterns = ["_site/**", "vh_translator/**", "_langs/fr/**", "_langs/de/**"],
+            Languages = ["fr", "de"],
+            OutputPattern = "_langs/{lang}/{path}",
+            DataFiles = [],
+            SourceLanguage = "en",
+            Engine = TranslationEngine.Gemini,
+            Model = "test-model",
+            BatchSize = 20,
+            TitleMustContain = "VpnHood!",
+            ApiKey = "unused",
+            PageBodyMode = PageBodyMode.Copy
+        };
+        var runner = CreateRunner(options, new FakeTranslator());
+
+        Assert.AreEqual(ExitCodes.Success, await runner.RunAsync());
+
+        var page = workspace.ReadFile("_langs/fr/free-vpn/download/index.html");
+        Assert.IsTrue(page.Contains("permalink: /fr/free-vpn/download/"),
+            "The permalink must point at the root URL, not the _langs folder");
+        Assert.IsTrue(page.Contains("lang: fr"));
+
+        // Orphan pruning must follow the pattern into the collection folder.
+        workspace.WriteFile("_langs/fr/removed/index.html", "---\nlang: fr\nauto_translated: true\n---\n<p>stale</p>");
+        Assert.AreEqual(ExitCodes.Success, await runner.RunAsync());
+        Assert.IsFalse(workspace.Exists("_langs/fr/removed/index.html"));
     }
 
     [TestMethod]

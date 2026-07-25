@@ -83,8 +83,15 @@ public sealed partial class PageDocument
     /// <summary>
     /// Rebuilds the page with translated title/description/body, the target language, and the
     /// generated-file marker. Every other front matter line is carried over byte for byte.
+    /// An explicit <paramref name="permalink" /> pins the served URL, so the generated file can
+    /// live anywhere (e.g. a <c>_langs/</c> collection folder) without changing the site URL.
     /// </summary>
-    public string Compose(string? translatedTitle, string? translatedDescription, string translatedBody, string languageCode)
+    public string Compose(
+        string? translatedTitle,
+        string? translatedDescription,
+        string translatedBody,
+        string languageCode,
+        string? permalink = null)
     {
         var sb = new StringBuilder();
         sb.Append("---").Append(Newline);
@@ -100,6 +107,7 @@ public sealed partial class PageDocument
                 case "description" when translatedDescription != null:
                     sb.Append("description: ").Append(QuoteYaml(translatedDescription)).Append(Newline);
                     break;
+                case "permalink" when permalink != null:
                 case "lang":
                 case AutoTranslatedKey:
                     break; // replaced below
@@ -109,6 +117,8 @@ public sealed partial class PageDocument
             }
         }
 
+        if (permalink != null)
+            sb.Append("permalink: ").Append(permalink).Append(Newline);
         sb.Append("lang: ").Append(languageCode).Append(Newline);
         sb.Append(AutoTranslatedKey).Append(": true").Append(Newline);
         sb.Append("---").Append(Newline);

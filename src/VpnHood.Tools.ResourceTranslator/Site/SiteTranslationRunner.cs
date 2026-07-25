@@ -179,7 +179,8 @@ public sealed class SiteTranslationRunner
 
         // Copy mode with no title/description: nothing needs the model at all.
         if (items.Length == 0) {
-            var copied = document.Compose(null, null, document.Body, language);
+            var copied = document.Compose(null, null, document.Body, language,
+                BuildPermalink(work.RelativePath, language));
             Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
             await File.WriteAllTextAsync(targetPath, copied, new UTF8Encoding(false), cancellationToken);
             _reporter.Info($"✓ {targetRelative}: copied (no translatable metadata).");
@@ -193,7 +194,8 @@ public sealed class SiteTranslationRunner
 
             try {
                 var results = await TranslateWithTimeoutAsync(translator, prompt, cancellationToken);
-                var page = ComposeTranslatedPage(document, masker, results, language, out errors);
+                var page = ComposeTranslatedPage(document, masker, results, language,
+                    BuildPermalink(work.RelativePath, language), out errors);
 
                 if (errors.Count == 0) {
                     Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
@@ -247,12 +249,27 @@ public sealed class SiteTranslationRunner
         };
     }
 
+    /// <summary>
+    /// Served URL of a generated page: always <c>/{lang}/{source dir}/</c>, independent of
+    /// where the output pattern physically places the file.
+    /// </summary>
+    private static string BuildPermalink(string relativePath, string language)
+    {
+        var url = relativePath.Replace('\\', '/');
+        const string indexName = "index.html";
+        if (url.EndsWith(indexName, StringComparison.OrdinalIgnoreCase))
+            url = url[..^indexName.Length];
+
+        return "/" + language + "/" + url;
+    }
+
     /// <summary>Validates the model output and, when everything holds, builds the final page.</summary>
     private string ComposeTranslatedPage(
         PageDocument document,
         LiquidMasker masker,
         TranslateResult[] results,
         string language,
+        string permalink,
         out IReadOnlyList<string> errors)
     {
         var errorList = new List<string>();
@@ -299,14 +316,14 @@ public sealed class SiteTranslationRunner
         // Copy mode: the body is the source body by construction, so there is nothing to verify.
         if (!translateBody) {
             errors = errorList;
-            return document.Compose(title, description, document.Body, language);
+            return document.Compose(title, description, document.Body, language, permalink);
         }
 
         var body = masker.Unmask(maskedBody!.Trim());
         errorList.AddRange(PageVerifier.Verify(document.Body, body));
 
         errors = errorList;
-        return errorList.Count > 0 ? string.Empty : document.Compose(title, description, body, language);
+        return errorList.Count > 0 ? string.Empty : document.Compose(title, description, body, language, permalink);
     }
 
     private static string ComposePrompt(string basePrompt, string? feedback)
@@ -395,13 +412,18 @@ public sealed class SiteTranslationRunner
     /// </summary>
     private async Task PruneOrphanedTargetsAsync(IReadOnlyList<string> pages, CancellationToken cancellationToken)
     {
-        // Only the default layout gives each language its own subtree that is safe to scan.
-        if (!_options.OutputPattern.StartsWith("{lang}/", StringComparison.Ordinal))
+        // Pruning needs a per-language subtree that is safe to scan, which any pattern
+        // ending in /{path} provides ({lang}/{path}, _langs/{lang}/{path}, ...).
+        if (!_options.OutputPattern.Contains("{lang}", StringComparison.Ordinal) ||
+            !_options.OutputPattern.EndsWith("/{path}", StringComparison.Ordinal))
             return;
 
         var pageSet = pages.ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var language in _options.Languages) {
-            var languageRoot = Path.GetFullPath(Path.Combine(_options.RootPath, language));
+            var languageRootRelative = _options.OutputPattern
+                .Replace("{lang}", language, StringComparison.Ordinal)
+                .Replace("/{path}", "", StringComparison.Ordinal);
+            var languageRoot = Path.GetFullPath(Path.Combine(_options.RootPath, languageRootRelative));
             if (!Directory.Exists(languageRoot))
                 continue;
 
@@ -415,7 +437,7 @@ public sealed class SiteTranslationRunner
                     continue;
 
                 File.Delete(fullPath);
-                _reporter.Info($"  {language}/{relativePath}: pruned (source page no longer exists).");
+                _reporter.Info($"  {languageRootRelative}/{relativePath}: pruned (source page no longer exists).");
             }
         }
     }

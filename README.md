@@ -110,7 +110,7 @@ i18n/
 
 Everything else works exactly as with a single file: only changed or missing entries are
 translated, and `--show-changes`, `--rebuild-lang`, and `--ignore-changes` apply per file.
-Bookkeeping goes next to your `vhtranslator.json` when one exists (`vh_translator/`), so data
+Bookkeeping goes next to your `vhtranslator.json` when one exists (`vh_translator/watches/`), so data
 trees that are consumed verbatim — a Jekyll `_data/` folder, an app bundle — stay clean.
 
 ### Preview first
@@ -186,7 +186,7 @@ vhtranslator --config ci/vhtranslator.json
 ### How it decides what to translate
 
 After each successful run the tool records the source text of every key in
-`vh_translator/<base>_watch.json`. On the next run a key is translated when:
+`vh_translator/watches/<base>_watch.json`. On the next run a key is translated when:
 
 - its **source text changed** since that record, **or**
 - it is **missing or empty** in the target file.
@@ -324,7 +324,7 @@ the next run.
 ### How it decides what to translate
 
 After each successful run the tool records a hash of every page in
-`vh_translator/site_watch.json`. On the next run a page is translated for a language when:
+`vh_translator/watches/site_watch.json`. On the next run a page is translated for a language when:
 
 - its **source content changed** since that record, **or**
 - the **target page is missing** for that language.

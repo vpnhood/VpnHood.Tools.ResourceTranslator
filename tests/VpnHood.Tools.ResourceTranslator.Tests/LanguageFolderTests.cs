@@ -62,7 +62,7 @@ public sealed class LanguageFolderTests
         await CreateFolderRunner(workspace, new FakeTranslator(), languages: ["fa"]).RunAsync();
 
         // Without a config the watch files land beside the language folders.
-        Assert.IsTrue(workspace.Exists(Path.Combine("i18n", "vh_translator", "i18n_home_watch.json")));
+        Assert.IsTrue(workspace.Exists(Path.Combine("i18n", "vh_translator", "watches", "i18n_home_watch.json")));
 
         var secondTranslator = new FakeTranslator();
         await CreateFolderRunner(workspace, secondTranslator, languages: ["fa"]).RunAsync();
@@ -87,7 +87,7 @@ public sealed class LanguageFolderTests
         var options = CreateOptions(workspace, languages: ["fa"], configPath: configPath);
         await new TranslationRunner(options, translatorFactory: () => new FakeTranslator()).RunAsync();
 
-        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "i18n_home_watch.json")),
+        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "i18n_home_watch.json")),
             "Bookkeeping must live next to the config, not inside the data tree");
         Assert.IsFalse(Directory.Exists(Path.Combine(workspace.Path, "i18n", "vh_translator")));
     }

@@ -16,6 +16,9 @@ public sealed class WatchStore
     /// <summary>Folder (next to the base resource file) holding translator bookkeeping.</summary>
     public const string PrivateFolderName = "vh_translator";
 
+    /// <summary>Subfolder of <see cref="PrivateFolderName" /> holding the watch files.</summary>
+    public const string WatchesFolderName = "watches";
+
     private static readonly JsonSerializerOptions OutputSerializerOptions = new() {
         WriteIndented = true,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
@@ -23,16 +26,27 @@ public sealed class WatchStore
 
     private readonly string _path;
 
-    private WatchStore(string path)
+    /// <summary>Pre-"watches/" location; read when the new path is missing, removed on save.</summary>
+    private readonly string? _legacyPath;
+
+    private WatchStore(string path, string? legacyPath = null)
     {
         _path = path;
+        _legacyPath = legacyPath;
+    }
+
+    private static WatchStore InPrivateFolder(string privateFolder, string fileName)
+    {
+        return new WatchStore(
+            Path.Combine(privateFolder, WatchesFolderName, fileName),
+            Path.Combine(privateFolder, fileName));
     }
 
     public static WatchStore ForBaseFile(string basePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(basePath);
         var baseName = Path.GetFileNameWithoutExtension(basePath);
-        return new WatchStore(Path.Combine(GetPrivateFolderPath(basePath), $"{baseName}_watch.json"));
+        return InPrivateFolder(GetPrivateFolderPath(basePath), $"{baseName}_watch.json");
     }
 
     /// <summary>
@@ -57,7 +71,7 @@ public sealed class WatchStore
 
         // The parent folder name keeps files from different language trees apart (i18n_home_watch.json).
         var name = $"{Path.GetFileName(folderParent)}_{Path.GetFileNameWithoutExtension(baseFilePath)}_watch.json";
-        return new WatchStore(Path.Combine(privateFolder, name));
+        return InPrivateFolder(privateFolder, name);
     }
 
     /// <summary>
@@ -81,7 +95,7 @@ public sealed class WatchStore
     public static WatchStore ForSiteRoot(string rootPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
-        return new WatchStore(Path.Combine(Path.GetFullPath(rootPath), PrivateFolderName, "site_watch.json"));
+        return InPrivateFolder(Path.Combine(Path.GetFullPath(rootPath), PrivateFolderName), "site_watch.json");
     }
 
     public static string GetPrivateFolderPath(string basePath)
@@ -97,11 +111,17 @@ public sealed class WatchStore
     /// </summary>
     public async Task<WatchSnapshot> LoadAsync(CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(_path))
+        // Fall back to the pre-"watches/" location so existing projects stay incremental;
+        // the next save migrates the file.
+        var path = _path;
+        if (!File.Exists(path) && _legacyPath != null && File.Exists(_legacyPath))
+            path = _legacyPath;
+
+        if (!File.Exists(path))
             return WatchSnapshot.Empty;
 
         try {
-            var text = await File.ReadAllTextAsync(_path, cancellationToken);
+            var text = await File.ReadAllTextAsync(path, cancellationToken);
             if (JsonNode.Parse(text) is not JsonObject obj)
                 return WatchSnapshot.Empty;
 
@@ -135,6 +155,10 @@ public sealed class WatchStore
 
         var text = JsonSerializer.Serialize(new WatchFile { Items = items }, OutputSerializerOptions);
         await File.WriteAllTextAsync(_path, text, cancellationToken);
+
+        // Complete the migration: the legacy file would otherwise linger as a stale duplicate.
+        if (_legacyPath != null && File.Exists(_legacyPath))
+            File.Delete(_legacyPath);
     }
 
     private static Dictionary<string, string> ToOrdinal(Dictionary<string, string>? source)

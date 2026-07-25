@@ -166,7 +166,29 @@ public sealed class TranslationRunnerTests
 
         // fr.json is still empty, so entries count as missing and are filled — but none as "changed".
         Assert.AreEqual(3, translator.TranslatedKeys.Count);
-        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "en_watch.json")));
+        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "en_watch.json")));
+    }
+
+    [TestMethod]
+    public async Task RunAsync_MigratesLegacyWatchFileIntoWatchesSubfolder()
+    {
+        using var workspace = new TestWorkspace();
+        var basePath = workspace.WriteFile("en.json", BaseJson);
+        workspace.WriteFile("fr.json", """{ "GREETING": "Bonjour" }""");
+
+        // A watch file from an older tool version, directly inside vh_translator/.
+        workspace.WriteFile("vh_translator/en_watch.json",
+            """{ "version": 1, "items": { "GREETING": "Hello", "FAREWELL": "Goodbye", "SETTINGS": "Settings" } }""");
+
+        var translator = new FakeTranslator();
+        await CreateRunner(basePath, translator).RunAsync();
+
+        // The legacy snapshot was honored (nothing counted as changed, only missing filled)...
+        CollectionAssert.AreEquivalent(new[] { "FAREWELL", "SETTINGS" }, translator.TranslatedKeys);
+
+        // ...and the file now lives in watches/, with the legacy copy gone.
+        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "en_watch.json")));
+        Assert.IsFalse(workspace.Exists(Path.Combine("vh_translator", "en_watch.json")));
     }
 
     [TestMethod]

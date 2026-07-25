@@ -35,6 +35,16 @@ public sealed class WatchStore
         return new WatchStore(Path.Combine(GetPrivateFolderPath(basePath), $"{baseName}_watch.json"));
     }
 
+    /// <summary>
+    /// Watch file for a site run: keys are page paths relative to the site root, values are
+    /// content hashes rather than raw source text (pages are too large to inline).
+    /// </summary>
+    public static WatchStore ForSiteRoot(string rootPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
+        return new WatchStore(Path.Combine(Path.GetFullPath(rootPath), PrivateFolderName, "site_watch.json"));
+    }
+
     public static string GetPrivateFolderPath(string basePath)
     {
         var baseDir = Path.GetDirectoryName(Path.GetFullPath(basePath))

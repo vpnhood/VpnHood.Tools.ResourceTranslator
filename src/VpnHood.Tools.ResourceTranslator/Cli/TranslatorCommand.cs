@@ -1,6 +1,7 @@
 using System.CommandLine;
 using VpnHood.Tools.ResourceTranslator.Configuration;
 using VpnHood.Tools.ResourceTranslator.Formats;
+using VpnHood.Tools.ResourceTranslator.Site;
 using VpnHood.Tools.ResourceTranslator.Translation;
 
 namespace VpnHood.Tools.ResourceTranslator.Cli;
@@ -16,19 +17,20 @@ public static class TranslatorCommand
             Description = $"Path to the base language file ({string.Join(" / ", ResourceFormatFactory.SupportedExtensions)})"
         };
         var configOption = new Option<string?>("--config") {
-            Description = $"Path to a {TranslatorConfig.FileName} file (default: nearest one found in parent folders)"
+            Description = $"Path to a {TranslatorConfig.FileName} file (default: nearest one found in the current " +
+                          $"or parent folders, also searched inside {Watch.WatchStore.PrivateFolderName}/)"
         };
         var extraPromptOption = new Option<string?>("--extra-prompt", "-x") {
             Description = "Path to extra instructions appended to the AI prompt"
         };
         var showChangesOption = new Option<bool>("--show-changes", "-c") {
-            Description = "Show changed keys since the last translation and exit"
+            Description = "List what would be translated (changed and missing items) and exit; needs no API key"
         };
         var rebuildLangOption = new Option<string?>("--rebuild-lang", "-r") {
-            Description = "Force retranslation of every entry for one language (e.g. 'fr')"
+            Description = "Force retranslation of everything for one language (e.g. 'fr')"
         };
         var ignoreChangesOption = new Option<bool>("--ignore-changes", "-i") {
-            Description = "Mark all current entries as translated without calling the AI"
+            Description = "Mark everything as already translated without calling the AI"
         };
         var apiKeyOption = new Option<string?>("--api-key", "-k") {
             Description = "API key (or set GEMINI_API_KEY / OPENAI_API_KEY / GROK_API_KEY)"
@@ -40,7 +42,7 @@ public static class TranslatorCommand
             Description = $"Translation engine: {string.Join(", ", EngineModelSelector.PublicEngineNames)} (default: detected from the model name)"
         };
         var batchOption = new Option<int?>("--batch", "-n") {
-            Description = "Batch size for translation requests (default: 20)"
+            Description = "Entries per translation request (default: 20)"
         };
         batchOption.Validators.Add(result => {
             if (result.GetValueOrDefault<int?>() is <= 0)
@@ -50,7 +52,8 @@ public static class TranslatorCommand
         var rootCommand = new RootCommand(
             "Translates i18n resource files (JSON or Microsoft .resx) using AI while preserving " +
             "placeholders, HTML tags and formatting. Only entries whose source text changed are " +
-            "retranslated; missing entries in a target language are always filled in.") {
+            "retranslated; missing entries in a target language are always filled in. " +
+            "To translate a static (Jekyll-style) website, use the 'site' command.") {
             baseOption,
             configOption,
             extraPromptOption,
@@ -80,7 +83,73 @@ public static class TranslatorCommand
             return await ExecuteAsync(commandLine, cancellationToken);
         });
 
+        var siteCommand = new Command("site",
+            "Translates a static (Jekyll-style) website using AI, writing whole pages into " +
+            "per-language folders. Only pages whose source changed are retranslated; missing " +
+            "target pages are always filled in. Every page is structurally verified against its " +
+            $"source and is never written when verification fails. Configured by the \"site\" " +
+            $"section of {TranslatorConfig.FileName}.") {
+            configOption,
+            extraPromptOption,
+            showChangesOption,
+            rebuildLangOption,
+            ignoreChangesOption,
+            apiKeyOption,
+            modelOption,
+            engineOption,
+            batchOption
+        };
+
+        siteCommand.SetAction(async (parseResult, cancellationToken) => {
+            var commandLine = new CommandLineOptions {
+                ConfigPath = parseResult.GetValue(configOption),
+                ExtraPromptPath = parseResult.GetValue(extraPromptOption),
+                ApiKey = parseResult.GetValue(apiKeyOption),
+                Model = parseResult.GetValue(modelOption),
+                Engine = parseResult.GetValue(engineOption),
+                BatchSize = parseResult.GetValue(batchOption),
+                ShowChanges = parseResult.GetValue(showChangesOption),
+                RebuildLang = parseResult.GetValue(rebuildLangOption),
+                RebuildWatch = parseResult.GetValue(ignoreChangesOption)
+            };
+
+            return await ExecuteSiteAsync(commandLine, cancellationToken);
+        });
+
+        rootCommand.Subcommands.Add(siteCommand);
         return rootCommand;
+    }
+
+    private static async Task<int> ExecuteSiteAsync(CommandLineOptions commandLine, CancellationToken cancellationToken)
+    {
+        var reporter = new ConsoleTranslationReporter();
+
+        try {
+            var options = SiteOptionsResolver.Resolve(commandLine);
+            if (options.ConfigPath != null)
+                reporter.Info($"Using config: {options.ConfigPath}");
+
+            var runner = new SiteTranslationRunner(options, reporter);
+
+            if (commandLine.RebuildWatch)
+                return await runner.RebuildWatchFileAsync(cancellationToken);
+
+            if (commandLine.ShowChanges)
+                return await runner.ShowChangesAsync(cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(commandLine.RebuildLang))
+                return await runner.RebuildLanguageAsync(commandLine.RebuildLang, cancellationToken);
+
+            return await runner.RunAsync(cancellationToken);
+        }
+        catch (TranslatorException ex) {
+            reporter.Warn($"Error: {ex.Message}");
+            return ex.ExitCode;
+        }
+        catch (OperationCanceledException) {
+            reporter.Warn("Cancelled.");
+            return ExitCodes.TranslationFailed;
+        }
     }
 
     private static async Task<int> ExecuteAsync(CommandLineOptions commandLine, CancellationToken cancellationToken)

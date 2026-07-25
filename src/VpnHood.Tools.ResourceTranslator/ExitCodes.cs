@@ -12,4 +12,5 @@ public static class ExitCodes
     public const int ParseError = 3;
     public const int MissingApiKey = 4;
     public const int TranslationFailed = 10;
+    public const int VerificationFailed = 11;
 }

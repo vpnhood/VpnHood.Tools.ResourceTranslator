@@ -1,0 +1,5 @@
+{
+  "comment": "MD024 siblings_only: README Parts 1 & 2 intentionally repeat the same section names (Preview first, Add a language, ...) so both modes read identically.",
+  "MD024": { "siblings_only": true },
+  "MD013": false
+}

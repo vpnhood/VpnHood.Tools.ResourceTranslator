@@ -12,19 +12,24 @@
 		<ToolCommandName>vhtranslator</ToolCommandName>
 		<PackageId>VpnHood.Tools.ResourceTranslator</PackageId>
 		<Title>VpnHood Resource Translator</Title>
-		<Description>AI-powered i18n resource translator for JSON and Microsoft .resx files. Translates only what changed, preserves placeholders, HTML tags and formatting, and supports Google Gemini, OpenAI and Grok engines.</Description>
+		<Description>AI-powered translator for i18n resource files (JSON, Microsoft .resx) and static Jekyll-style websites. Translates only what changed, preserves placeholders, HTML structure and formatting, verifies every translated page before writing it, and supports Google Gemini, OpenAI and Grok engines.</Description>
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="AngleSharp" />
+		<PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" />
 		<PackageReference Include="Mscc.GenerativeAI" />
 		<PackageReference Include="OpenAI" />
 		<PackageReference Include="System.CommandLine" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
 	</ItemGroup>
 
-	<!-- The default prompt template travels with the tool. -->
+	<!-- The default prompt templates travel with the tool. -->
 	<ItemGroup>
 		<Content Include="Resources\translation-prompt.txt">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="Resources\site-page-prompt.txt">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 	</ItemGroup>

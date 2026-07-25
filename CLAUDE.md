@@ -10,6 +10,7 @@ src/VpnHood.Tools.ResourceTranslator/
   Cli/            command-line surface, console reporter
   Configuration/  vhtranslator.json discovery, option resolution
   Formats/        IResourceFormat implementations (JSON, .resx)
+  Site/           `site` command: whole-page translation of static (Jekyll) sites
   Translation/    engines, prompt building, response parsing
   Watch/          change tracking (which keys need retranslation)
   Program.cs      parse-and-dispatch only; the pipeline lives in TranslationRunner
@@ -57,6 +58,23 @@ is a bug and should surface with its stack trace.
 key. A missing or corrupt watch file means "nothing is known to be current", so everything is
 retranslated — that is deliberate, not a bug. Legacy MD5-hash watch files are migrated on the
 next successful save.
+
+**Site pipeline (`Site/`):** `SiteTranslationRunner` mirrors `TranslationRunner` for whole pages:
+discover (`SitePageDiscovery` globs) → mask Liquid (`LiquidMasker`) → translate title/description/
+body as one 3-item batch through the existing `ITranslator` engines → verify (`PageVerifier`,
+AngleSharp tree/attribute comparison) → compose (`PageDocument`) → write. Verification is
+**fail-closed by design**: these translations ship unreviewed, so a page that cannot be proven
+structurally intact is never written (exit code `11`, `VerificationFailed`) and the previous
+output stays. Do not weaken a check to make a model's output pass — tighten the prompt or add
+retry feedback instead. The site watch file stores `sha256:` hashes per page path, in the same
+envelope as the classic watch file. Front matter is never model-generated: only the `title` and
+`description` values are replaced, and files gain `lang` + `auto_translated: true` (the marker
+that makes a file safe to overwrite; its absence means hand-authored, never clobber). The marker
+also gates the other two destructive paths: sources carrying it are skipped (a generated page
+must never become a source), and orphaned targets are pruned only when they carry it.
+`vhtranslator.json` may live at the root or inside `vh_translator/`; either way
+`TranslatorConfig.BaseDirectory` is the site root — code must resolve paths against it, never
+against the config file's own folder.
 
 ## Conventions
 

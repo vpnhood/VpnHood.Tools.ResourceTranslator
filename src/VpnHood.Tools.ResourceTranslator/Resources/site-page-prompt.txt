@@ -1,0 +1,20 @@
+Translate a web page for a marketing website. Each item is one part of the same page; translate them consistently with each other.
+
+Rules for the item with key "body" (an HTML fragment):
+- Translate ONLY human-readable text content, and the values of these attributes: alt, title, aria-label, placeholder.
+- NEVER change, add, or remove HTML elements. The output must have exactly the same tag structure as the input.
+- NEVER change tag names, attribute names, or the values of any other attribute (class, id, href, src, data-*, style, ...).
+- Tokens like ⟦L0⟧, ⟦L1⟧ are protected placeholders. Copy each one exactly as-is in its position. Never translate, move across elements, remove, or duplicate them.
+- Do not translate or modify the content of script, style, svg, code, or pre elements.
+- Elements with a translate="no" attribute — and everything inside them — must be copied unchanged.
+- Keep HTML entities (&amp;, &nbsp;, ...) exactly as written.
+- Keep URLs, email addresses, and file paths unchanged.
+- Return the COMPLETE translated fragment; never truncate or summarize it.
+
+Rules for the items with key "title" and "description" (page metadata, plain text):
+- Translate naturally for search results in the target language; keep them concise.
+- Keep brand and product names unchanged.
+
+General:
+- Preserve capitalization style, punctuation, and tone appropriate to the target language.
+- Return the translation only, with no commentary.

@@ -1,38 +1,52 @@
 # VpnHood.Tools.ResourceTranslator
 
-**Keep your app's translations up to date automatically.** Edit your base language file, run one
-command, and every other locale catches up — placeholders, HTML, and formatting intact.
+**Keep your translations up to date automatically.** Edit your base language file — or your
+website's pages — run one command, and every other locale catches up: placeholders, HTML,
+and formatting intact.
 
 [![NuGet](https://img.shields.io/nuget/v/VpnHood.Tools.ResourceTranslator.svg)](https://www.nuget.org/packages/VpnHood.Tools.ResourceTranslator)
 [![Build](https://github.com/vpnhood/VpnHood.Tools.ResourceTranslator/actions/workflows/build.yml/badge.svg)](https://github.com/vpnhood/VpnHood.Tools.ResourceTranslator/actions/workflows/build.yml)
 [![License](https://img.shields.io/badge/license-LGPL--2.1-blue.svg)](LICENSE)
 
 ```console
-$ vhtranslator
+$ vhtranslator                       # resource files (JSON / .resx)
 Processing fr.json (fr) - 3 changed, 1 missing entries...
 ✓ fr.json: 4 translated/updated.
-  de.json: Up to date, no changes needed.
+Done.
+
+$ vhtranslator site                  # static website (Jekyll-style)
+✓ fr/free-vpn/index.html: translated.
+✓ de/free-vpn/index.html: translated.
 Done.
 ```
 
-It works on JSON (`en.json`, `fr.json`, …) and Microsoft `.resx` files, backed by Google Gemini,
-OpenAI, or Grok. It ships as a .NET tool, so any repository can adopt it without vendoring code.
+The tool has two modes that share the same engines, configuration file, options, and workflow:
+
+| Mode | Command | Translates | Safety guarantee |
+| --- | --- | --- | --- |
+| **Resource files** | `vhtranslator` | JSON / Microsoft `.resx` values | Placeholders and HTML tags preserved |
+| **Static website** | `vhtranslator site` | Whole Jekyll-style pages into per-language folders | Every page structurally verified; unverifiable pages are never written |
+
+Backed by Google Gemini, OpenAI, or Grok. Ships as a .NET tool, so any repository can adopt it
+without vendoring code.
 
 ---
 
 ## Why
 
-Machine-translating a whole locale file on every build is slow, expensive, and overwrites work your
-translators did by hand. This tool tracks the **source text** behind every key, so a run only sends
-what actually changed — usually a handful of strings. Everything else is left exactly as it is.
+Machine-translating everything on every build is slow, expensive, and overwrites work your
+translators did by hand. This tool tracks the **source** behind every key and every page, so a
+run only sends what actually changed — usually a handful of strings or pages. Everything else is
+left exactly as it is. And because website translations often ship **without human review**, the
+site mode refuses to write any page it cannot prove structurally intact.
 
-- 🔄 **Incremental** — only changed entries are retranslated; hand-written translations survive
-- 🎯 **Placeholder-safe** — `{variables}`, HTML tags, and URLs come back intact
+- 🔄 **Incremental** — only changed entries/pages are retranslated; hand-written work survives
+- 🎯 **Placeholder-safe** — `{variables}`, HTML tags, Liquid tags, and URLs come back intact
+- 🛡️ **Verified** — translated pages are checked element-by-element and rejected on any damage
 - 🤖 **Multi-engine** — Gemini, OpenAI, or Grok, inferred from the model name
-- 📦 **Two formats** — JSON and Microsoft `.resx`
 - 🗂️ **Zero-argument runs** — commit a `vhtranslator.json` and just run `vhtranslator`
 - 🔧 **Your terminology** — project glossaries and per-key rules
-- 🛡️ **CI-friendly** — retries with backoff, and stable exit codes
+- 🏗️ **CI-friendly** — retries with backoff, and stable exit codes
 
 ## Install
 
@@ -55,7 +69,7 @@ Set the API key for the engine you use:
 | OpenAI | `OPENAI_API_KEY` | [platform.openai.com](https://platform.openai.com/api-keys) |
 | Grok | `GROK_API_KEY` | [console.x.ai](https://console.x.ai/) |
 
-## Usage
+## Part 1 — Translating resource files
 
 ### Translate everything that changed
 
@@ -109,10 +123,12 @@ Translations are just file changes — read them like any other diff:
 vhtranslator && git diff locales/
 ```
 
-## Configuration
+### Configuration
 
-Drop a `vhtranslator.json` in your repository and the tool needs no arguments at all. It is found by
-walking up from the base file, or from the working directory.
+Drop a `vhtranslator.json` in your repository and the tool needs no arguments at all. It is found
+by walking up from the base file (or the working directory), checking each folder **and its
+`vh_translator/` folder** — keep it at the root or tuck it away, both work. Relative paths always
+resolve against the repo/site root.
 
 ```json
 {
@@ -126,11 +142,11 @@ walking up from the base file, or from the working directory.
 
 | Key | Description |
 | --- | --- |
-| `base` | Base language file, relative to the config file |
+| `base` | Base language file, relative to the site/repo root |
 | `engine` | `gemini`, `gpt`, or `grok`. Inferred from `model` when omitted |
 | `model` | Model name. Defaults to `gemini-flash-lite-latest` |
 | `batch` | Entries per request. Default `20` |
-| `extraPrompt` | Extra instructions file, relative to the config file |
+| `extraPrompt` | Extra instructions file, relative to the site/repo root |
 | `languages` | Target languages. **Missing files are created.** Omit to update only existing locale files |
 
 Command-line options always win, so one-off overrides stay easy:
@@ -141,7 +157,7 @@ vhtranslator -m gpt-4o-mini        # same config, different model
 vhtranslator --config ci/vhtranslator.json
 ```
 
-## How it decides what to translate
+### How it decides what to translate
 
 After each successful run the tool records the source text of every key in
 `vh_translator/<base>_watch.json`. On the next run a key is translated when:
@@ -149,25 +165,10 @@ After each successful run the tool records the source text of every key in
 - its **source text changed** since that record, **or**
 - it is **missing or empty** in the target file.
 
-> **Commit the watch file.** Without it nothing is known to be current, so the next run retranslates
-> every key in every language.
+> **Commit the watch file.** Without it nothing is known to be current, so the next run
+> retranslates every key in every language.
 
-## Customizing translations
-
-Add project rules via `--extra-prompt`, the `extraPrompt` config key, or by creating
-`vh_translator/custom_prompt.txt` next to your base file, which is picked up automatically.
-
-```text
-- Keep "VPN", "API", and "JSON" untranslated
-- The brand name "VpnHood" never changes
-- Use formal tone for German; use Latin American Spanish
-- Return "*" for keys ending in _URL
-```
-
-Returning `*` skips an entry: the existing translation is kept, or the source text is used if there
-is none. Useful for brand names, URLs, and region-specific strings.
-
-## Working with .resx
+### Working with .resx
 
 Standard .NET naming — a neutral base file with culture-specific siblings:
 
@@ -186,40 +187,197 @@ vhtranslator -b Resources/Strings.resx -r es    # creates Strings.es.resx
 Only string `<data>` entries are touched. Typed and binary entries, comments, metadata, and the
 schema are preserved byte for byte.
 
+## Part 2 — Translating a static website (Jekyll)
+
+### Translate everything that changed
+
+One command translates every stale page into per-language folders that mirror the source paths —
+on a Jekyll site the folder path *is* the URL, so `/fr/free-vpn/` just works:
+
+```bash
+vhtranslator site
+```
+
+```text
+site/
+├── index.html                ← base pages (never modified)
+├── free-vpn/index.html
+├── fr/                       ← generated, mirrors the source tree
+│   ├── index.html
+│   └── free-vpn/index.html
+└── de/
+    ├── index.html
+    └── free-vpn/index.html
+```
+
+### Preview first
+
+Lists the stale page/language pairs (and stale `data` entries) and exits. It needs no API key:
+
+```bash
+vhtranslator site --show-changes
+```
+
+### Add a language
+
+Add the code to `languages` in the config — missing target pages are always created on the next
+run. To force-refresh one language that already exists:
+
+```bash
+vhtranslator site --rebuild-lang fr     # must be listed under "languages"
+```
+
+### Adopt an existing site
+
+Mark every current page as translated so the first run only fills in what is missing:
+
+```bash
+vhtranslator site --ignore-changes
+```
+
+### Review before committing
+
+```bash
+vhtranslator site && git diff fr/ de/
+```
+
+### Configuration
+
+The `site` section lives in the same `vhtranslator.json`; the top-level `model`, `engine`,
+`batch`, and `extraPrompt` keys apply to site runs too.
+
+```json
+{
+  "model": "gemini-2.5-flash",
+  "site": {
+    "pages": ["**/index.html"],
+    "exclude": ["privacy-policy/**", "terms-of-use/**"],
+    "languages": ["fr", "de"],
+    "output": "{lang}/{path}",
+    "titleMustContain": "MyBrand",
+    "data": ["_data/i18n/en.json"]
+  }
+}
+```
+
+| Key | Description |
+| --- | --- |
+| `pages` | Globs selecting the source pages. Default `**/index.html` |
+| `exclude` | Globs excluded from discovery (e.g. legal pages you keep in the source language). `.git/`, `_site/`, `_includes/`, `node_modules/`, `vh_translator/`, and the generated locale trees are always excluded |
+| `languages` | **Required.** Target language codes; each becomes an output folder |
+| `output` | Output path template with `{lang}` and `{path}`. Default `{lang}/{path}` |
+| `titleMustContain` | Text every translated page title must keep (typically the brand). Skipped with a warning when the source title itself lacks it |
+| `data` | Key/value files (e.g. shared UI strings) translated with the resource-file pipeline as part of every site run, into the same languages |
+| `sourceLanguage` | Language of the source pages. Default `en` |
+
+> **Pin an exact model version** (e.g. `gemini-2.5-flash`, not `-latest`) — when translations
+> ship without review, silent model drift means silent output drift.
+
+### Opting content out
+
+Three levels, from coarse to fine — pick the one that matches the shape of the exclusion:
+
+| Level | Where | Use for |
+| --- | --- | --- |
+| `exclude` globs | `vhtranslator.json` | Whole trees — legal pages, archives |
+| `translate: false` | The page's front matter | A single page, decided where the content lives |
+| `translate="no"` | Any HTML element | A fragment inside a translated page — an address, a testimonial quote, a brand slogan |
+
+When a previously translated page is opted out (either way), its generated copies are pruned on
+the next run.
+
+### How it decides what to translate
+
+After each successful run the tool records a hash of every page in
+`vh_translator/site_watch.json`. On the next run a page is translated for a language when:
+
+- its **source content changed** since that record, **or**
+- the **target page is missing** for that language.
+
+> **Commit the watch file.** Without it nothing is known to be current, so the next run
+> retranslates every page in every language.
+
+### How a page is translated — and verified
+
+1. **Front matter is never model-generated.** Only the `title` and `description` values are
+   translated; every other line is copied verbatim, and `lang: <code>` plus an
+   `auto_translated: true` marker are added.
+2. **Liquid is never model-visible.** `{% ... %}` and `{{ ... }}` tags are masked with opaque
+   tokens the model must return untouched, so template syntax cannot be corrupted.
+3. **The body is verified fail-closed** against the source: identical element tree, identical
+   attributes (only `alt`, `title`, `aria-label`, `placeholder` values may change), untouched
+   `script`/`style`/`svg` content, every Liquid token back exactly once, and a sane
+   visible-text length. On failure the errors are fed back to the model and the page is
+   retried; after 3 attempts it is **not written** (exit code `11`) and the previously
+   generated page keeps serving.
+
+### The `auto_translated` marker
+
+The marker in a generated page's front matter is what makes automation safe around human work:
+
+- A target file **without** it is treated as hand-authored and is **never overwritten** — write
+  your own `fr/about/index.html` and the tool leaves it alone forever.
+- A discovered *source* page carrying it is skipped — a generated page can never be
+  retranslated as if it were content.
+- When a source page is deleted, its generated counterparts are **pruned automatically** — but
+  only files carrying the marker; hand-authored files are never deleted.
+
+## Customizing translations
+
+Add project rules via `--extra-prompt`, the `extraPrompt` config key, or by creating
+`vh_translator/custom_prompt.txt` next to your base file / at your site root, which is picked up
+automatically. The same rules apply to both modes:
+
+```text
+- Keep "VPN", "API", and "JSON" untranslated
+- The brand name "VpnHood" never changes
+- Use formal tone for German; use Latin American Spanish
+- Return "*" for keys ending in _URL
+```
+
+Returning `*` skips an entry (resource files only): the existing translation is kept, or the
+source text is used if there is none. Useful for brand names, URLs, and region-specific strings.
+
 ## Continuous integration
 
 ```yaml
-- run: dotnet tool install --global VpnHood.Tools.ResourceTranslator
-- run: vhtranslator
+- run: dotnet tool restore
+- run: dotnet tool run vhtranslator        # resource files
+- run: dotnet tool run vhtranslator site   # static website
   env:
     GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
 
 Pair it with a create-pull-request action so translations arrive as reviewable diffs rather than
-unattended commits.
+unattended commits — or commit them directly before the build step when the fail-closed
+verification is your review.
 
 ## Reference
 
-### Options
+### Commands and options
 
 ```text
-vhtranslator [options]
+vhtranslator [options]           Translate resource files (JSON / .resx)
+vhtranslator site [options]      Translate a static website
 
-  -b, --base <path>          Base language file (.json / .resx)
-      --config <path>        Config file to use (default: nearest vhtranslator.json)
+Shared options:
+      --config <path>        Config file to use (default: nearest vhtranslator.json,
+                             also found inside vh_translator/)
   -x, --extra-prompt <path>  Extra instructions appended to the AI prompt
-  -c, --show-changes         List changed keys and exit
-  -r, --rebuild-lang <code>  Retranslate every entry for one language
-  -i, --ignore-changes       Mark all current entries as translated, without calling the AI
+  -c, --show-changes         List what would be translated and exit (no API key needed)
+  -r, --rebuild-lang <code>  Force retranslation of everything for one language
+  -i, --ignore-changes       Mark everything as already translated, without calling the AI
   -k, --api-key <key>        API key (or use the engine's environment variable)
   -m, --model <name>         AI model (default depends on the engine)
   -e, --engine <name>        gemini, gpt, or grok (default: inferred from the model name)
-  -n, --batch <number>       Entries per request (default: 20)
+  -n, --batch <number>       Entries per request (default: 20; in site mode this applies
+                             to the "data" files — pages always go one per request)
   -?, -h, --help             Show help and usage information
       --version              Show version information
-```
 
-`--show-changes` and `--ignore-changes` never contact the AI and need no API key.
+vhtranslator only:
+  -b, --base <path>          Base language file (.json / .resx)
+```
 
 ### Default models
 
@@ -239,23 +397,35 @@ vhtranslator [options]
 | `3` | Could not parse the base file |
 | `4` | Missing API key |
 | `10` | Translation failed after retries |
+| `11` | One or more pages failed verification and were not written (site mode) |
 
 ## Troubleshooting
 
-**Everything is retranslated on every run.** The watch file is missing or not committed. Run once,
-then commit `vh_translator/`.
+**Everything is retranslated on every run.** The watch file is missing or not committed. Run
+once, then commit `vh_translator/`.
 
-**`Missing API key`.** Set `GEMINI_API_KEY`, `OPENAI_API_KEY`, or `GROK_API_KEY` for your engine, or
-pass `-k`.
+**`Missing API key`.** Set `GEMINI_API_KEY`, `OPENAI_API_KEY`, or `GROK_API_KEY` for your engine,
+or pass `-k`.
 
-**`Could not parse the base file`.** JSON must be a **flat** object of string values — nested objects
-are not supported. Validate with `jq . locales/en.json`. `.resx` files must be well-formed XML.
+**`Could not parse the base file`.** JSON must be a **flat** object of string values — nested
+objects are not supported. Validate with `jq . locales/en.json`. `.resx` files must be
+well-formed XML.
 
-**Rate limits.** Lower `--batch`, or use a lighter model such as `gemini-flash-lite-latest`. The tool
-already retries with increasing backoff.
+**Rate limits.** Lower `--batch`, or use a lighter model such as `gemini-flash-lite-latest`. The
+tool already retries with increasing backoff.
 
-**A translation is wrong or should not happen.** Add a rule to your custom prompt, or fix the value
-by hand and run `--ignore-changes` so it is not overwritten.
+**A translation is wrong or should not happen.** Add a rule to your custom prompt, or fix the
+value by hand and run `--ignore-changes` so it is not overwritten. On a site, hand-fixing a
+*generated* page does not survive the next source edit — put the rule in the custom prompt, or
+remove the `auto_translated` marker to own that page permanently.
+
+**A page keeps failing verification (exit `11`).** Read the reported errors — the model is
+damaging structure (dropped elements, lost placeholders). Try a stronger model. Meanwhile the
+previously generated page keeps serving; nothing broken is ever written.
+
+**"skipped — carries the 'auto_translated' marker".** A generated page was discovered as a
+source: your `pages`/`exclude` globs or a non-default `output` pattern let a locale tree leak
+into discovery. Fix the globs; the marker guard is the safety net, not the mechanism.
 
 ## Contributing
 

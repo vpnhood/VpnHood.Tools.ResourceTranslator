@@ -42,6 +42,10 @@ public sealed record TranslatorConfig
     [JsonPropertyName("languages")]
     public string[]? Languages { get; init; }
 
+    /// <summary>Settings for the <c>site</c> command; null when the repo has no site section.</summary>
+    [JsonPropertyName("site")]
+    public Site.SiteConfig? Site { get; init; }
+
     /// <summary>Directory the config was loaded from; relative paths resolve against it.</summary>
     [JsonIgnore]
     public string BaseDirectory { get; private init; } = Directory.GetCurrentDirectory();
@@ -62,7 +66,8 @@ public sealed record TranslatorConfig
     }
 
     /// <summary>
-    /// Searches <paramref name="startDirectory" /> and each parent for a config file.
+    /// Searches <paramref name="startDirectory" /> and each parent for a config file — either
+    /// directly in the folder or tucked away in its <c>vh_translator/</c> folder.
     /// Returns <see cref="Empty" /> when none exists — the config file is entirely optional.
     /// </summary>
     public static TranslatorConfig Discover(string startDirectory)
@@ -72,6 +77,10 @@ public sealed record TranslatorConfig
             var candidate = Path.Combine(dir.FullName, FileName);
             if (File.Exists(candidate))
                 return Parse(candidate);
+
+            var nested = Path.Combine(dir.FullName, Watch.WatchStore.PrivateFolderName, FileName);
+            if (File.Exists(nested))
+                return Parse(nested);
 
             dir = dir.Parent;
         }
@@ -94,8 +103,16 @@ public sealed record TranslatorConfig
             var config = JsonSerializer.Deserialize<TranslatorConfig>(json, ReadOptions)
                          ?? throw new TranslatorException($"Config file is empty: {fullPath}", ExitCodes.ParseError);
 
+            var baseDirectory = Path.GetDirectoryName(fullPath) ?? Directory.GetCurrentDirectory();
+
+            // A config kept inside the tool's own folder belongs to the folder's parent: paths
+            // stay relative to the repo/site root, exactly as if the file sat there itself.
+            if (string.Equals(Path.GetFileName(baseDirectory), Watch.WatchStore.PrivateFolderName, StringComparison.OrdinalIgnoreCase) &&
+                Path.GetDirectoryName(baseDirectory) is { } parent)
+                baseDirectory = parent;
+
             return config with {
-                BaseDirectory = Path.GetDirectoryName(fullPath) ?? Directory.GetCurrentDirectory(),
+                BaseDirectory = baseDirectory,
                 SourcePath = fullPath
             };
         }

@@ -17,11 +17,13 @@ public static class TranslatorOptionsResolver
         var config = LoadConfig(commandLine);
         var basePath = ResolveBasePath(commandLine, config);
 
-        // Fail before any network call if the file cannot be translated at all.
-        if (!File.Exists(basePath))
-            throw new TranslatorException($"File not found: {basePath}", ExitCodes.FileNotFound);
+        // Fail before any network call if the base cannot be translated at all. A folder base
+        // (language folder, e.g. i18n/en) is validated by the runner, which enumerates its files.
+        var isFolderBase = Directory.Exists(basePath);
+        if (!isFolderBase && !File.Exists(basePath))
+            throw new TranslatorException($"File or folder not found: {basePath}", ExitCodes.FileNotFound);
 
-        if (ResourceFormatFactory.TryCreate(basePath) == null)
+        if (!isFolderBase && ResourceFormatFactory.TryCreate(basePath) == null)
             throw new TranslatorException(
                 $"Unsupported file type '{Path.GetExtension(basePath)}'. " +
                 $"Supported formats: {string.Join(", ", ResourceFormatFactory.SupportedExtensions)}",
@@ -99,7 +101,19 @@ public static class TranslatorOptionsResolver
 
         // Legacy convention: vh_translator/custom_prompt.txt next to the base file.
         var conventional = Path.Combine(Watch.WatchStore.GetPrivateFolderPath(basePath), "custom_prompt.txt");
-        return File.Exists(conventional) ? conventional : null;
+        if (File.Exists(conventional))
+            return conventional;
+
+        // Config-adjacent convention, so a base anywhere in the tree still picks up the
+        // project's shared instructions (e.g. a brand glossary).
+        if (!string.IsNullOrWhiteSpace(config.SourcePath)) {
+            var configConventional = Path.Combine(
+                Watch.WatchStore.GetPrivateFolderForConfig(config.SourcePath), "custom_prompt.txt");
+            if (File.Exists(configConventional))
+                return configConventional;
+        }
+
+        return null;
     }
 
     private static string? ResolveApiKey(CommandLineOptions commandLine, TranslationEngine engine)

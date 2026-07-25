@@ -29,8 +29,10 @@ public sealed record SiteConfig
     public string? Output { get; init; }
 
     /// <summary>
-    /// Base key/value resource files (e.g. <c>_data/i18n/en.json</c>) translated with the
-    /// classic pipeline as part of a site run, using the same target languages.
+    /// Base key/value resources translated with the classic pipeline as part of a site run,
+    /// using the same target languages. Each entry is a resource file (e.g.
+    /// <c>_data/i18n/en.json</c>) or a language folder (e.g. <c>_data/i18n/en</c>) whose files
+    /// are translated to sibling language folders.
     /// </summary>
     [JsonPropertyName("data")]
     public string[]? Data { get; init; }

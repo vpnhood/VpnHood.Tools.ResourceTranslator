@@ -96,8 +96,9 @@ public static partial class SiteOptionsResolver
             var fullPath = config.ResolvePath(entry);
             if (fullPath == null)
                 continue;
-            if (!File.Exists(fullPath))
-                throw new TranslatorException($"Site data file not found: {fullPath}", ExitCodes.FileNotFound);
+            // A data entry may be a single resource file or a language folder (e.g. _data/i18n/en).
+            if (!File.Exists(fullPath) && !Directory.Exists(fullPath))
+                throw new TranslatorException($"Site data file or folder not found: {fullPath}", ExitCodes.FileNotFound);
 
             dataFiles.Add(fullPath);
         }

@@ -36,6 +36,45 @@ public sealed class WatchStore
     }
 
     /// <summary>
+    /// Watch file for one file of a language-folder base (e.g. <c>i18n/en/home.json</c>).
+    /// Bookkeeping goes next to the config file when one exists, so data trees that are
+    /// consumed verbatim (Jekyll <c>_data</c>, app bundles) are not polluted; without a config
+    /// it falls back to a <c>vh_translator</c> folder beside the language folders.
+    /// </summary>
+    public static WatchStore ForLanguageFolderFile(string languageFolderPath, string baseFilePath, string? configPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(languageFolderPath);
+        ArgumentException.ThrowIfNullOrWhiteSpace(baseFilePath);
+
+        var languageFolder = Path.GetFullPath(languageFolderPath);
+        var folderParent = Path.GetDirectoryName(languageFolder)
+                           ?? throw new ArgumentException($"Cannot determine the parent of '{languageFolderPath}'.",
+                               nameof(languageFolderPath));
+
+        var privateFolder = string.IsNullOrWhiteSpace(configPath)
+            ? Path.Combine(folderParent, PrivateFolderName)
+            : GetPrivateFolderForConfig(configPath);
+
+        // The parent folder name keeps files from different language trees apart (i18n_home_watch.json).
+        var name = $"{Path.GetFileName(folderParent)}_{Path.GetFileNameWithoutExtension(baseFilePath)}_watch.json";
+        return new WatchStore(Path.Combine(privateFolder, name));
+    }
+
+    /// <summary>
+    /// Bookkeeping folder for a run driven by a config file: the config's own folder when it
+    /// already is <c>vh_translator</c>, otherwise a <c>vh_translator</c> folder beside it.
+    /// </summary>
+    public static string GetPrivateFolderForConfig(string configPath)
+    {
+        var configDir = Path.GetDirectoryName(Path.GetFullPath(configPath))
+                        ?? throw new ArgumentException($"Cannot determine directory of '{configPath}'.", nameof(configPath));
+
+        return string.Equals(Path.GetFileName(configDir), PrivateFolderName, StringComparison.OrdinalIgnoreCase)
+            ? configDir
+            : Path.Combine(configDir, PrivateFolderName);
+    }
+
+    /// <summary>
     /// Watch file for a site run: keys are page paths relative to the site root, values are
     /// content hashes rather than raw source text (pages are too large to inline).
     /// </summary>

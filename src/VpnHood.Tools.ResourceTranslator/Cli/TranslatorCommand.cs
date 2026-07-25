@@ -14,7 +14,9 @@ public static class TranslatorCommand
     public static RootCommand Create()
     {
         var baseOption = new Option<string?>("--base", "-b") {
-            Description = $"Path to the base language file ({string.Join(" / ", ResourceFormatFactory.SupportedExtensions)})"
+            Description = $"Path to the base language file ({string.Join(" / ", ResourceFormatFactory.SupportedExtensions)}) " +
+                          "or a language folder (e.g. i18n/en): every resource file inside is translated " +
+                          "to sibling language folders (i18n/fa, ...)"
         };
         var configOption = new Option<string?>("--config") {
             Description = $"Path to a {TranslatorConfig.FileName} file (default: nearest one found in the current " +

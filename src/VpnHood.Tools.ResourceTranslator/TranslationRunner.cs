@@ -7,7 +7,9 @@ namespace VpnHood.Tools.ResourceTranslator;
 
 /// <summary>
 /// Drives a translation run end to end: load the base file, work out what changed, translate
-/// the affected entries in each target locale, then record the new baseline.
+/// the affected entries in each target locale, then record the new baseline. The base may also
+/// be a language folder (e.g. <c>i18n/en</c>); every supported file inside is then translated
+/// to sibling language folders via one inner runner per file.
 /// </summary>
 public sealed class TranslationRunner
 {
@@ -19,9 +21,12 @@ public sealed class TranslationRunner
 
     private readonly TranslatorOptions _options;
     private readonly ITranslationReporter _reporter;
-    private readonly IResourceFormat _format;
-    private readonly WatchStore _watchStore;
+    private readonly IResourceFormat _format = null!;
+    private readonly WatchStore _watchStore = null!;
     private readonly Func<ITranslator> _translatorFactory;
+
+    /// <summary>Per-file runners when the base is a language folder; null for a single file.</summary>
+    private readonly IReadOnlyList<TranslationRunner>? _folderRunners;
 
     public TranslationRunner(
         TranslatorOptions options,
@@ -30,15 +35,96 @@ public sealed class TranslationRunner
     {
         _options = options;
         _reporter = reporter ?? NullTranslationReporter.Instance;
-        _format = ResourceFormatFactory.Create(options.BasePath);
-        _watchStore = WatchStore.ForBaseFile(options.BasePath);
         _translatorFactory = translatorFactory
                              ?? (() => TranslatorFactory.Create(options.Engine, options.GetRequiredApiKey(), options.Model));
+
+        if (Directory.Exists(options.BasePath)) {
+            _folderRunners = CreateFolderRunners(options, _reporter, _translatorFactory);
+        }
+        else {
+            _format = ResourceFormatFactory.Create(options.BasePath);
+            _watchStore = WatchStore.ForBaseFile(options.BasePath);
+        }
+    }
+
+    private TranslationRunner(
+        TranslatorOptions options,
+        ITranslationReporter reporter,
+        Func<ITranslator> translatorFactory,
+        IResourceFormat format,
+        WatchStore watchStore)
+    {
+        _options = options;
+        _reporter = reporter;
+        _translatorFactory = translatorFactory;
+        _format = format;
+        _watchStore = watchStore;
+    }
+
+    private static List<TranslationRunner> CreateFolderRunners(
+        TranslatorOptions options,
+        ITranslationReporter reporter,
+        Func<ITranslator> translatorFactory)
+    {
+        var folder = Path.GetFullPath(options.BasePath);
+        var files = Directory.EnumerateFiles(folder)
+            .Where(file => ResourceFormatFactory.TryCreate(file) != null)
+            .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (files.Count == 0)
+            throw new TranslatorException(
+                $"Language folder contains no supported resource files: {folder} " +
+                $"(supported: {string.Join(", ", ResourceFormatFactory.SupportedExtensions)})",
+                ExitCodes.FileNotFound);
+
+        return files
+            .Select(file => new TranslationRunner(
+                CloneOptionsForFile(options, file),
+                reporter,
+                translatorFactory,
+                new LanguageFolderResourceFormat(ResourceFormatFactory.Create(file)),
+                WatchStore.ForLanguageFolderFile(folder, file, options.ConfigPath)))
+            .ToList();
+    }
+
+    private static TranslatorOptions CloneOptionsForFile(TranslatorOptions options, string basePath)
+    {
+        return new TranslatorOptions {
+            BasePath = basePath,
+            Engine = options.Engine,
+            Model = options.Model,
+            BatchSize = options.BatchSize,
+            ExtraPromptPath = options.ExtraPromptPath,
+            Languages = options.Languages,
+            ApiKey = options.ApiKey,
+            ConfigPath = options.ConfigPath
+        };
+    }
+
+    /// <summary>Runs a per-file action over every runner of a language-folder base.</summary>
+    private async Task<int> RunFolderAsync(
+        Func<TranslationRunner, Task<int>> action,
+        CancellationToken cancellationToken)
+    {
+        foreach (var runner in _folderRunners!) {
+            cancellationToken.ThrowIfCancellationRequested();
+            _reporter.Info($"── {Path.GetFileName(runner._options.BasePath)} ──");
+
+            var exitCode = await action(runner);
+            if (exitCode != ExitCodes.Success)
+                return exitCode;
+        }
+
+        return ExitCodes.Success;
     }
 
     /// <summary>Rewrites the watch file so every current entry counts as already translated.</summary>
     public async Task<int> RebuildWatchFileAsync(CancellationToken cancellationToken = default)
     {
+        if (_folderRunners != null)
+            return await RunFolderAsync(runner => runner.RebuildWatchFileAsync(cancellationToken), cancellationToken);
+
         var baseFile = await LoadBaseFileAsync(cancellationToken);
         await _watchStore.SaveAsync(baseFile.OrderedKeys, baseFile.Map, cancellationToken);
 
@@ -49,6 +135,9 @@ public sealed class TranslationRunner
     /// <summary>Prints the keys whose source text changed since the last run, without translating.</summary>
     public async Task<int> ShowChangesAsync(CancellationToken cancellationToken = default)
     {
+        if (_folderRunners != null)
+            return await RunFolderAsync(runner => runner.ShowChangesAsync(cancellationToken), cancellationToken);
+
         var baseFile = await LoadBaseFileAsync(cancellationToken);
         var snapshot = await _watchStore.LoadAsync(cancellationToken);
         var changedKeys = snapshot.GetChangedKeys(baseFile.Map);
@@ -62,6 +151,9 @@ public sealed class TranslationRunner
 
     public async Task<int> RunAsync(CancellationToken cancellationToken = default)
     {
+        if (_folderRunners != null)
+            return await RunFolderAsync(runner => runner.RunAsync(cancellationToken), cancellationToken);
+
         var baseFile = await LoadBaseFileAsync(cancellationToken);
         var snapshot = await _watchStore.LoadAsync(cancellationToken);
         var changedKeys = snapshot.GetChangedKeys(baseFile.Map);
@@ -88,6 +180,9 @@ public sealed class TranslationRunner
     /// <summary>Force-translates every entry of a single language, creating the file if needed.</summary>
     public async Task<int> RebuildLanguageAsync(string languageCode, CancellationToken cancellationToken = default)
     {
+        if (_folderRunners != null)
+            return await RunFolderAsync(runner => runner.RebuildLanguageAsync(languageCode, cancellationToken), cancellationToken);
+
         var baseFile = await LoadBaseFileAsync(cancellationToken);
         var sourceLanguage = _format.GetLanguageCode(_options.BasePath);
         var prompt = await LoadPromptAsync(cancellationToken);

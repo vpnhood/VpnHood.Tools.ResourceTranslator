@@ -41,6 +41,11 @@ public class SiteTranslationRunnerTests
 
     private static SiteOptions CreateOptions(TestWorkspace workspace, params string[] dataFiles)
     {
+        return CreateOptionsWithConfig(workspace, configPath: null, dataFiles);
+    }
+
+    private static SiteOptions CreateOptionsWithConfig(TestWorkspace workspace, string? configPath, params string[] dataFiles)
+    {
         return new SiteOptions {
             RootPath = workspace.Path,
             PagePatterns = ["**/index.html"],
@@ -53,7 +58,8 @@ public class SiteTranslationRunnerTests
             Model = "test-model",
             BatchSize = 20,
             TitleMustContain = "VpnHood!",
-            ApiKey = "unused"
+            ApiKey = "unused",
+            ConfigPath = configPath
         };
     }
 
@@ -226,6 +232,27 @@ public class SiteTranslationRunnerTests
         Assert.IsTrue(workspace.Exists("_data/i18n/fr.json"), "Data siblings must be created");
         Assert.IsTrue(workspace.ReadFile("_data/i18n/fr.json").Contains("[fr] Home"));
         Assert.IsTrue(workspace.ReadFile("_data/i18n/de.json").Contains("[de] FAQ"));
+    }
+
+    [TestMethod]
+    public async Task Run_translates_a_data_language_folder_to_sibling_folders()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.WriteFile("index.html", HomePage);
+        workspace.WriteFile("_data/i18n/en/home.json", """{ "hero_title": "Free VPN" }""");
+        workspace.WriteFile("_data/i18n/en/about.json", """{ "heading": "About us" }""");
+        var configPath = workspace.WriteFile("vh_translator/vhtranslator.json", "{}");
+
+        var runner = CreateRunner(CreateOptionsWithConfig(workspace, configPath, "_data/i18n/en"), new FakeTranslator());
+
+        Assert.AreEqual(ExitCodes.Success, await runner.RunAsync());
+        Assert.IsTrue(workspace.ReadFile("_data/i18n/fr/home.json").Contains("[fr] Free VPN"));
+        Assert.IsTrue(workspace.ReadFile("_data/i18n/de/home.json").Contains("[de] Free VPN"));
+        Assert.IsTrue(workspace.ReadFile("_data/i18n/fr/about.json").Contains("[fr] About us"));
+        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "i18n_home_watch.json")),
+            "Data bookkeeping must live next to the config");
+        Assert.IsFalse(Directory.Exists(Path.Combine(workspace.Path, "_data", "i18n", "vh_translator")),
+            "Bookkeeping must not land inside the Jekyll data tree");
     }
 
     [TestMethod]

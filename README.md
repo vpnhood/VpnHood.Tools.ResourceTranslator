@@ -87,6 +87,32 @@ locales/
 └── es.json    ← updated
 ```
 
+### A folder per language
+
+Projects that split their strings across many files keep them in one folder per language.
+Point `--base` at the **folder** — its name is the source language — and every resource file
+inside is translated to sibling language folders:
+
+```bash
+vhtranslator --base i18n/en
+```
+
+```text
+i18n/
+├── en/            ← base folder (never modified)
+│   ├── home.json
+│   └── about.json
+├── fr/            ← updated file by file
+│   ├── home.json
+│   └── about.json
+└── fa/            ← created when listed under "languages"
+```
+
+Everything else works exactly as with a single file: only changed or missing entries are
+translated, and `--show-changes`, `--rebuild-lang`, and `--ignore-changes` apply per file.
+Bookkeeping goes next to your `vhtranslator.json` when one exists (`vh_translator/`), so data
+trees that are consumed verbatim — a Jekyll `_data/` folder, an app bundle — stay clean.
+
 ### Preview first
 
 `--show-changes` lists what a run would translate and exits. It needs no API key:
@@ -142,7 +168,7 @@ resolve against the repo/site root.
 
 | Key | Description |
 | --- | --- |
-| `base` | Base language file, relative to the site/repo root |
+| `base` | Base language file — or language folder (see above) — relative to the site/repo root |
 | `engine` | `gemini`, `gpt`, or `grok`. Inferred from `model` when omitted |
 | `model` | Model name. Defaults to `gemini-flash-lite-latest` |
 | `batch` | Entries per request. Default `20` |
@@ -255,7 +281,7 @@ The `site` section lives in the same `vhtranslator.json`; the top-level `model`,
     "languages": ["fr", "de"],
     "output": "{lang}/{path}",
     "titleMustContain": "MyBrand",
-    "data": ["_data/i18n/en.json"]
+    "data": ["_data/i18n/en"]
   }
 }
 ```
@@ -267,7 +293,7 @@ The `site` section lives in the same `vhtranslator.json`; the top-level `model`,
 | `languages` | **Required.** Target language codes; each becomes an output folder |
 | `output` | Output path template with `{lang}` and `{path}`. Default `{lang}/{path}` |
 | `titleMustContain` | Text every translated page title must keep (typically the brand). Skipped with a warning when the source title itself lacks it |
-| `data` | Key/value files (e.g. shared UI strings) translated with the resource-file pipeline as part of every site run, into the same languages |
+| `data` | Key/value resources (e.g. shared UI strings) translated with the resource-file pipeline as part of every site run, into the same languages. Each entry is a file (`_data/i18n/en.json`) or a language folder (`_data/i18n/en`) |
 | `sourceLanguage` | Language of the source pages. Default `en` |
 
 > **Pin an exact model version** (e.g. `gemini-2.5-flash`, not `-latest`) — when translations

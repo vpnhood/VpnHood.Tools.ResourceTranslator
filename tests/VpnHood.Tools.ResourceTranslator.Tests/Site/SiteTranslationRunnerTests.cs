@@ -278,6 +278,28 @@ public class SiteTranslationRunnerTests
     }
 
     [TestMethod]
+    public async Task RebuildLanguage_forces_data_files_too()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.WriteFile("index.html", HomePage);
+        workspace.WriteFile("_data/i18n/en/home.json", """{ "hero_title": "Free VPN" }""");
+        var configPath = workspace.WriteFile("vh_translator/vhtranslator.json", "{}");
+
+        var runner = CreateRunner(
+            CreateOptionsWithConfig(workspace, configPath, dataFiles: "_data/i18n/en"), new FakeTranslator());
+        Assert.AreEqual(ExitCodes.Success, await runner.RunAsync());
+
+        // Simulate a bad shipped translation: the watch says up to date, but the fr data is wrong.
+        workspace.WriteFile("_data/i18n/fr/home.json", """{ "hero_title": "stale" }""");
+        Assert.AreEqual(ExitCodes.Success, await runner.RebuildLanguageAsync("fr"));
+
+        Assert.IsTrue(workspace.ReadFile("_data/i18n/fr/home.json").Contains("[fr] Free VPN"),
+            "A language rebuild must retranslate the data files, not just the pages");
+        Assert.IsTrue(workspace.ReadFile("_data/i18n/de/home.json").Contains("[de] Free VPN"),
+            "Other languages must keep their existing data");
+    }
+
+    [TestMethod]
     public async Task RebuildLanguage_rejects_unlisted_languages()
     {
         using var workspace = new TestWorkspace();

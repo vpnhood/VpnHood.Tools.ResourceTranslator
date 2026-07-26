@@ -29,7 +29,8 @@ public static class TranslatorCommand
             Description = "List what would be translated (changed and missing items) and exit; needs no API key"
         };
         var rebuildLangOption = new Option<string?>("--rebuild-lang", "-r") {
-            Description = "Force retranslation of everything for one language (e.g. 'fr')"
+            Description = "Force retranslation of everything for one language (e.g. 'fr'); " +
+                          "on the 'site' command this covers the pages and all configured data files"
         };
         var ignoreChangesOption = new Option<bool>("--ignore-changes", "-i") {
             Description = "Mark everything as already translated without calling the AI"
@@ -87,7 +88,8 @@ public static class TranslatorCommand
 
         var siteCommand = new Command("site",
             "Translates a static (Jekyll-style) website using AI, writing whole pages into " +
-            "per-language folders. Only pages whose source changed are retranslated; missing " +
+            "per-language folders and keeping the configured i18n data files translated. " +
+            "Only pages whose source changed are retranslated; missing " +
             "target pages are always filled in. Every page is structurally verified against its " +
             $"source and is never written when verification fails. Configured by the \"site\" " +
             $"section of {TranslatorConfig.FileName}.") {

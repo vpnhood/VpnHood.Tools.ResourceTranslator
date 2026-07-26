@@ -126,8 +126,11 @@ public sealed class SiteTranslationRunner
         await SaveWatchAsync(workList, failedPages, cancellationToken);
         await PruneOrphanedTargetsAsync(workList.Select(work => work.RelativePath).ToList(), cancellationToken);
 
+        // A language rebuild must force the data files too, not just the pages.
         foreach (var dataRunner in CreateDataRunners())
-            await dataRunner.RunAsync(cancellationToken);
+            await (rebuildLanguage == null
+                ? dataRunner.RunAsync(cancellationToken)
+                : dataRunner.RebuildLanguageAsync(rebuildLanguage, cancellationToken));
 
         if (failedPages.Count > 0) {
             _reporter.Warn($"{failedPages.Count} page(s) failed verification and were NOT written: " +

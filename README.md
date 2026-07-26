@@ -43,6 +43,8 @@ site mode refuses to write any page it cannot prove structurally intact.
 - 🔄 **Incremental** — only changed entries/pages are retranslated; hand-written work survives
 - 🎯 **Placeholder-safe** — `{variables}`, HTML tags, Liquid tags, and URLs come back intact
 - 🛡️ **Verified** — translated pages are checked element-by-element and rejected on any damage
+- ↔️ **RTL-aware** — for right-to-left targets (fa, ar, he, ur) an invisible direction mark keeps
+  trailing Latin `!`/`?` — think "VpnHood!" — rendering on the correct side
 - 🤖 **Multi-engine** — Gemini, OpenAI, or Grok, inferred from the model name
 - 🗂️ **Zero-argument runs** — commit a `vhtranslator.json` and just run `vhtranslator`
 - 🔧 **Your terminology** — project glossaries and per-key rules
@@ -253,6 +255,9 @@ run. To force-refresh one language that already exists:
 vhtranslator site --rebuild-lang fr     # must be listed under "languages"
 ```
 
+A language rebuild retranslates that language's pages **and** its `data` files — use it after
+switching models to regenerate one language wholesale.
+
 ### Adopt an existing site
 
 Mark every current page as translated so the first run only fills in what is missing:
@@ -291,7 +296,7 @@ The `site` section lives in the same `vhtranslator.json`; the top-level `model`,
 | `pages` | Globs selecting the source pages. Default `**/index.html` |
 | `exclude` | Globs excluded from discovery (e.g. legal pages you keep in the source language). `.git/`, `_site/`, `_includes/`, `node_modules/`, `vh_translator/`, and the generated locale trees are always excluded |
 | `languages` | **Required.** Target language codes; each becomes an output folder |
-| `output` | Output path template with `{lang}` and `{path}`. Default `{lang}/{path}` |
+| `output` | Output path template with `{lang}` and `{path}`. Default `{lang}/{path}`. May place files outside the served tree (e.g. a Jekyll collection folder, `_langs/{lang}/{path}`) — every generated page carries an explicit `permalink`, so the URL stays `/{lang}/{path}` regardless |
 | `titleMustContain` | Text every translated page title must keep (typically the brand). Skipped with a warning when the source title itself lacks it |
 | `data` | Key/value resources (e.g. shared UI strings) translated with the resource-file pipeline as part of every site run, into the same languages. Each entry is a file (`_data/i18n/en.json`) or a language folder (`_data/i18n/en`) |
 | `sourceLanguage` | Language of the source pages. Default `en` |
@@ -335,8 +340,8 @@ After each successful run the tool records a hash of every page in
 ### How a page is translated — and verified
 
 1. **Front matter is never model-generated.** Only the `title` and `description` values are
-   translated; every other line is copied verbatim, and `lang: <code>` plus an
-   `auto_translated: true` marker are added.
+   translated; every other line is copied verbatim, and `lang: <code>`, an
+   `auto_translated: true` marker, and an explicit `permalink: /<lang>/<path>/` are added.
 2. **Liquid is never model-visible.** `{% ... %}` and `{{ ... }}` tags are masked with opaque
    tokens the model must return untouched, so template syntax cannot be corrupted.
 3. **The body is verified fail-closed** against the source: identical element tree, identical
@@ -401,6 +406,7 @@ Shared options:
   -x, --extra-prompt <path>  Extra instructions appended to the AI prompt
   -c, --show-changes         List what would be translated and exit (no API key needed)
   -r, --rebuild-lang <code>  Force retranslation of everything for one language
+                             (site mode: the pages and all "data" files)
   -i, --ignore-changes       Mark everything as already translated, without calling the AI
   -k, --api-key <key>        API key (or use the engine's environment variable)
   -m, --model <name>         AI model (default depends on the engine)
@@ -411,7 +417,7 @@ Shared options:
       --version              Show version information
 
 vhtranslator only:
-  -b, --base <path>          Base language file (.json / .resx)
+  -b, --base <path>          Base language file (.json / .resx) or language folder (i18n/en)
 ```
 
 ### Default models

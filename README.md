@@ -44,7 +44,8 @@ site mode refuses to write any page it cannot prove structurally intact.
 - 🎯 **Placeholder-safe** — `{variables}`, HTML tags, Liquid tags, and URLs come back intact
 - 🛡️ **Verified** — translated pages are checked element-by-element and rejected on any damage
 - ↔️ **RTL-aware** — for right-to-left targets (fa, ar, he, ur) an invisible direction mark keeps
-  trailing Latin `!`/`?` — think "VpnHood!" — rendering on the correct side
+  trailing Latin `!`/`?` — think "VpnHood!" — rendering on the correct side, and only where the
+  next word is actually RTL ("VpnHood! CLIENT" stays untouched)
 - 🤖 **Multi-engine** — Gemini, OpenAI, or Grok, inferred from the model name
 - 🗂️ **Zero-argument runs** — commit a `vhtranslator.json` and just run `vhtranslator`
 - 🔧 **Your terminology** — project glossaries and per-key rules

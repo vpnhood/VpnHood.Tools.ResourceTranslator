@@ -39,8 +39,10 @@ public static partial class TranslationPostProcessor
     /// In RTL text the bidi algorithm pulls a '!' or '?' that trails a Latin word (e.g. the
     /// brand "VpnHood!") out of the Latin run and renders it on the wrong side of the word.
     /// An invisible LEFT-TO-RIGHT MARK (U+200E) after the punctuation keeps it attached.
-    /// Only applied when the punctuation is followed by whitespace, an RTL character, or the
-    /// end of the text — never inside Latin sequences like URLs. Idempotent.
+    /// Only added when the punctuation actually sits on a bidi boundary: the next word is
+    /// RTL (ignoring neutral punctuation and HTML tags in between) or the text ends. When the
+    /// next word stayed Latin — "VpnHood! CLIENT", "VpnHood!&lt;b&gt;CONNECT&lt;/b&gt;" — the
+    /// punctuation is inside a Latin run and needs no mark. Idempotent.
     /// </summary>
     public static string IsolateLatinPunctuation(string text)
     {
@@ -92,8 +94,12 @@ public static partial class TranslationPostProcessor
         return translated;
     }
 
+    // Latin word + '!'/'?', not already marked, where scanning forward over HTML tags and
+    // neutral characters (never over a Latin letter or digit) reaches an RTL character or the
+    // end of the text.
     // ReSharper disable StringLiteralTypo
-    [GeneratedRegex(@"([A-Za-z0-9][!?]+)(?=\s|$|[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF])")]
+    [GeneratedRegex(
+        @"([A-Za-z0-9][!?]+)(?!\u200E)(?=(?:<[^>]*>|[^A-Za-z0-9<])*(?:$|[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]))")]
     // ReSharper restore StringLiteralTypo
     private static partial Regex LatinTrailingPunctuationRegex();
 }

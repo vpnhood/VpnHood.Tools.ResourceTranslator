@@ -88,6 +88,32 @@ public sealed class TranslationPostProcessorTests
     }
 
     [TestMethod]
+    public void PostProcess_SkipsMarkWhenNextWordStayedLatin()
+    {
+        // "VpnHood! CLIENT" is one Latin run — the '!' sits between two Latin words and the
+        // bidi algorithm never moves it, so the mark would be noise.
+        Assert.AreEqual("VpnHood! CLIENT را دانلود کنید",
+            TranslationPostProcessor.PostProcess("Download VpnHood! CLIENT", "VpnHood! CLIENT را دانلود کنید", "fa"));
+    }
+
+    [TestMethod]
+    public void IsolateLatinPunctuation_LooksPastMarkupForTheNextWord()
+    {
+        // A tag is not a word: what follows it decides.
+        Assert.AreEqual("VpnHood!<span>ENGINE</span> است",
+            TranslationPostProcessor.IsolateLatinPunctuation("VpnHood!<span>ENGINE</span> است"));
+        Assert.AreEqual("VpnHood!" + Lrm + "<b>رایگان</b>",
+            TranslationPostProcessor.IsolateLatinPunctuation("VpnHood!<b>رایگان</b>"));
+    }
+
+    [TestMethod]
+    public void IsolateLatinPunctuation_LooksPastNeutralsForTheNextWord()
+    {
+        Assert.AreEqual("VpnHood!" + Lrm + " – یک VPN رایگان",
+            TranslationPostProcessor.IsolateLatinPunctuation("VpnHood! – یک VPN رایگان"));
+    }
+
+    [TestMethod]
     public void PostProcess_NeverTouchesPunctuationInsideLatinRuns()
     {
         // '!' followed by another Latin character (URLs, code) must stay untouched.

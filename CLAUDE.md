@@ -91,22 +91,26 @@ maintainer asking for it.
 
 ## Releasing
 
-`Directory.Build.props` holds `VersionPrefix`. Tagging drives publication:
+Publication is a manual GitHub Actions dispatch from `main` — there are no release tags:
 
 ```bash
-git tag v1.1.0 && git push origin v1.1.0
+gh workflow run publish_nugets.yml --ref main
 ```
 
-`.github/workflows/publish.yml` builds, tests, packs with the tag's version, and pushes to NuGet.
-`.github/workflows/build.yml` runs build/test/pack on pushes and pull requests.
+`.github/workflows/publish_nugets.yml` checks out vpnhood/VpnHood's shared `pub/` scripts;
+`Publish-ModuleNugetPackages.ps1` self-bumps the build number (`pub/PubVersion.json` + the
+`<Version>` in `Directory.Build.props`), builds, packs, pushes to NuGet, and commits the version
+bump back to this repo. A minor/major bump is a hand edit of both files before dispatching;
+`-independentVersion` keeps this tool on its own 1.x line, independent of the monorepo's release
+train. `.github/workflows/build.yml` runs build/test/pack on pushes and pull requests.
 
 Publishing uses **nuget.org Trusted Publishing** (OIDC) — there is no long-lived API key. The job
 requests a GitHub OIDC token (`permissions: id-token: write`), exchanges it via `NuGet/login@v1`
 for a key valid for one hour, and pushes with that. Two consequences worth remembering:
 
 - The trusted publishing policy on nuget.org is bound to the **workflow file name**
-  (`publish.yml`) plus owner/repo. Renaming or moving that file breaks publishing until the
-  policy is updated to match.
+  (`publish_nugets.yml`) plus owner/repo. Renaming or moving that file breaks publishing until
+  the policy is updated to match.
 - The only repository secret involved is `NUGET_USER`, the nuget.org profile name. If the login
   step fails with a policy mismatch, check the policy's owner/repo/workflow/environment fields
   rather than looking for a missing API key.

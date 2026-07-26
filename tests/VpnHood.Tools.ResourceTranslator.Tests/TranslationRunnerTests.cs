@@ -203,6 +203,39 @@ public sealed class TranslationRunnerTests
         Assert.AreEqual(ExitCodes.ParseError, ex.ExitCode);
     }
 
+    [TestMethod]
+    public async Task RunAsync_SingleFileWithConfig_PutsWatchFileNextToConfig()
+    {
+        using var workspace = new TestWorkspace();
+        var basePath = workspace.WriteFile("src/locales/en.json", BaseJson);
+        workspace.WriteFile("src/locales/fr.json", """{ "GREETING": "Bonjour" }""");
+        var configPath = workspace.WriteFile("vh_translator/vhtranslator.json", "{}");
+
+        // A watch file from an older, config-less integration, beside the base file.
+        workspace.WriteFile("src/locales/vh_translator/en_watch.json",
+            """{ "version": 1, "items": { "GREETING": "Hello", "FAREWELL": "Goodbye", "SETTINGS": "Settings" } }""");
+
+        var options = new TranslatorOptions {
+            BasePath = basePath,
+            Engine = TranslationEngine.Gemini,
+            Model = "test-model",
+            BatchSize = 20,
+            ApiKey = "test-key",
+            Languages = [],
+            ConfigPath = configPath
+        };
+        var translator = new FakeTranslator();
+        await new TranslationRunner(options, translatorFactory: () => translator).RunAsync();
+
+        // The old snapshot was honored (only missing entries filled, nothing "changed")...
+        CollectionAssert.AreEquivalent(new[] { "FAREWELL", "SETTINGS" }, translator.TranslatedKeys);
+
+        // ...and the bookkeeping now lives next to the config, out of the resource tree.
+        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "locales", "en_watch.json")));
+        Assert.IsFalse(workspace.Exists(Path.Combine("src", "locales", "vh_translator", "en_watch.json")),
+            "The base-adjacent copy must be removed after migration");
+    }
+
     private static TranslationRunner CreateRunner(string basePath, ITranslator translator)
     {
         return new TranslationRunner(CreateOptions(basePath), translatorFactory: () => translator);

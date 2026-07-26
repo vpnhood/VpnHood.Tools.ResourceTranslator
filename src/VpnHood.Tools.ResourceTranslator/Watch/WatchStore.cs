@@ -58,11 +58,24 @@ public sealed class WatchStore
             ]);
     }
 
-    public static WatchStore ForBaseFile(string basePath)
+    public static WatchStore ForBaseFile(string basePath, string? configPath = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(basePath);
         var baseName = Path.GetFileNameWithoutExtension(basePath);
-        return InPrivateFolder(GetPrivateFolderPath(basePath), $"{baseName}_watch.json");
+        if (string.IsNullOrWhiteSpace(configPath))
+            return InPrivateFolder(GetPrivateFolderPath(basePath), $"{baseName}_watch.json");
+
+        // With a config the bookkeeping goes next to it (like folder mode), namespaced by the
+        // base file's folder, so the resource tree itself stays clean. Base-adjacent locations
+        // from config-less runs and older releases are still read and migrated on save.
+        var baseAdjacent = GetPrivateFolderPath(basePath);
+        var subfolder = Path.GetFileName(Path.GetDirectoryName(Path.GetFullPath(basePath)))!;
+        return new WatchStore(
+            Path.Combine(GetPrivateFolderForConfig(configPath), WatchesFolderName, subfolder, $"{baseName}_watch.json"),
+            [
+                Path.Combine(baseAdjacent, WatchesFolderName, $"{baseName}_watch.json"),
+                Path.Combine(baseAdjacent, $"{baseName}_watch.json")
+            ]);
     }
 
     /// <summary>

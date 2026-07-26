@@ -43,7 +43,7 @@ public sealed class TranslationRunner
         }
         else {
             _format = ResourceFormatFactory.Create(options.BasePath);
-            _watchStore = WatchStore.ForBaseFile(options.BasePath);
+            _watchStore = WatchStore.ForBaseFile(options.BasePath, options.ConfigPath);
         }
     }
 

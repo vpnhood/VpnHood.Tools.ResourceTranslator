@@ -94,7 +94,9 @@ public class PageDocumentTests
     [TestMethod]
     public void Compose_normalizes_model_newlines_to_the_source_style()
     {
-        var document = PageDocument.Parse(SamplePage);
+        // Raw string literals inherit this file's on-disk line endings, so force the
+        // fixture to LF — the test must not depend on how git checked the file out.
+        var document = PageDocument.Parse(SamplePage.Replace("\r\n", "\n"));
 
         var output = document.Compose("t – VpnHood!", "d", "<p>line1</p>\r\n<p>line2</p>", "fr");
         Assert.IsFalse(output.Contains('\r'), "LF source must stay pure LF even when the model emits CRLF");

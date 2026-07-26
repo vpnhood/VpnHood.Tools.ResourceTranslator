@@ -389,7 +389,7 @@ public sealed class SiteTranslationRunner
     }
 
     /// <summary>
-    /// Records the new baseline for pages whose every language succeeded; failed pages keep
+    /// Records the new baseline for pages who's every language succeeded; failed pages keep
     /// their old entry (or none), so the next run picks them up again.
     /// </summary>
     private async Task SaveWatchAsync(List<PageWork> workList, List<string> failedPages, CancellationToken cancellationToken)

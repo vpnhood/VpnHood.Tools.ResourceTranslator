@@ -1,5 +1,6 @@
 using VpnHood.Tools.ResourceTranslator.Site;
 using VpnHood.Tools.ResourceTranslator.Translation;
+// ReSharper disable StringLiteralTypo
 
 namespace VpnHood.Tools.ResourceTranslator.Tests.Site;
 
@@ -100,7 +101,7 @@ public class SiteTranslationRunnerTests
         Assert.IsTrue(french.Contains("{% raw %}"));
         Assert.IsTrue(french.Contains("href=\"/free-vpn/download/\""), "Links must be untouched");
         Assert.IsTrue(french.Contains("[fr]"), "Body must be translated");
-        Assert.IsTrue(workspace.Exists("vh_translator/watches/site_watch.json"), "Watch file must be recorded");
+        Assert.IsTrue(workspace.Exists("vh_translator/watches/pages/site_watch.json"), "Watch file must be recorded");
     }
 
     [TestMethod]
@@ -256,7 +257,7 @@ public class SiteTranslationRunnerTests
         Assert.IsTrue(workspace.ReadFile("_data/i18n/fr/home.json").Contains("[fr] Free VPN"));
         Assert.IsTrue(workspace.ReadFile("_data/i18n/de/home.json").Contains("[de] Free VPN"));
         Assert.IsTrue(workspace.ReadFile("_data/i18n/fr/about.json").Contains("[fr] About us"));
-        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "i18n_home_watch.json")),
+        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "i18n", "home_watch.json")),
             "Data bookkeeping must live next to the config");
         Assert.IsFalse(Directory.Exists(Path.Combine(workspace.Path, "_data", "i18n", "vh_translator")),
             "Bookkeeping must not land inside the Jekyll data tree");

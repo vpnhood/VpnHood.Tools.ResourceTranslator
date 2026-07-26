@@ -4,7 +4,7 @@ namespace VpnHood.Tools.ResourceTranslator.Site;
 
 /// <summary>
 /// Replaces Liquid tags (<c>{% ... %}</c> and <c>{{ ... }}</c>) with opaque tokens before a
-/// page is sent to the model, and restores them afterwards. The model can then never corrupt
+/// page is sent to the model, and restores them afterward. The model can then never corrupt
 /// template syntax it was never shown; a missing or duplicated token is a hard verification
 /// failure, not something to repair.
 /// </summary>

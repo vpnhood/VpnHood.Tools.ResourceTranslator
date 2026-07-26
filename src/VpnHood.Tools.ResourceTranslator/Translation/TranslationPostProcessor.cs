@@ -92,6 +92,8 @@ public static partial class TranslationPostProcessor
         return translated;
     }
 
+    // ReSharper disable StringLiteralTypo
     [GeneratedRegex(@"([A-Za-z0-9][!?]+)(?=\s|$|[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF])")]
+    // ReSharper restore StringLiteralTypo
     private static partial Regex LatinTrailingPunctuationRegex();
 }

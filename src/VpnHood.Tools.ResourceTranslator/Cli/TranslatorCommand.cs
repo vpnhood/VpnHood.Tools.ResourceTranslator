@@ -91,7 +91,7 @@ public static class TranslatorCommand
             "per-language folders and keeping the configured i18n data files translated. " +
             "Only pages whose source changed are retranslated; missing " +
             "target pages are always filled in. Every page is structurally verified against its " +
-            $"source and is never written when verification fails. Configured by the \"site\" " +
+            "source and is never written when verification fails. Configured by the \"site\" " +
             $"section of {TranslatorConfig.FileName}.") {
             configOption,
             extraPromptOption,

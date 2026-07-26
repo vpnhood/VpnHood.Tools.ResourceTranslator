@@ -62,7 +62,7 @@ public sealed class LanguageFolderTests
         await CreateFolderRunner(workspace, new FakeTranslator(), languages: ["fa"]).RunAsync();
 
         // Without a config the watch files land beside the language folders.
-        Assert.IsTrue(workspace.Exists(Path.Combine("i18n", "vh_translator", "watches", "i18n_home_watch.json")));
+        Assert.IsTrue(workspace.Exists(Path.Combine("i18n", "vh_translator", "watches", "i18n", "home_watch.json")));
 
         var secondTranslator = new FakeTranslator();
         await CreateFolderRunner(workspace, secondTranslator, languages: ["fa"]).RunAsync();
@@ -87,9 +87,31 @@ public sealed class LanguageFolderTests
         var options = CreateOptions(workspace, languages: ["fa"], configPath: configPath);
         await new TranslationRunner(options, translatorFactory: () => new FakeTranslator()).RunAsync();
 
-        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "i18n_home_watch.json")),
+        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "i18n", "home_watch.json")),
             "Bookkeeping must live next to the config, not inside the data tree");
         Assert.IsFalse(Directory.Exists(Path.Combine(workspace.Path, "i18n", "vh_translator")));
+    }
+
+    [TestMethod]
+    public async Task RunAsync_FolderBase_MigratesFlatWatchFileIntoNamespaceSubfolder()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.WriteFile("i18n/en/home.json", """{ "TITLE": "Welcome" }""");
+        workspace.WriteFile("i18n/fa/home.json", """{ "TITLE": "خوش آمدید" }""");
+        var configPath = workspace.WriteFile("vh_translator/vhtranslator.json", "{}");
+
+        // A watch file from the previous layout: prefixed, flat inside watches/.
+        workspace.WriteFile("vh_translator/watches/i18n_home_watch.json",
+            """{ "version": 1, "items": { "TITLE": "Welcome" } }""");
+
+        var translator = new FakeTranslator();
+        var options = CreateOptions(workspace, languages: ["fa"], configPath: configPath);
+        await new TranslationRunner(options, translatorFactory: () => translator).RunAsync();
+
+        Assert.AreEqual(0, translator.CallCount, "The flat watch file must be honored (nothing changed)");
+        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "i18n", "home_watch.json")));
+        Assert.IsFalse(workspace.Exists(Path.Combine("vh_translator", "watches", "i18n_home_watch.json")),
+            "The flat copy must be removed after migration");
     }
 
     [TestMethod]

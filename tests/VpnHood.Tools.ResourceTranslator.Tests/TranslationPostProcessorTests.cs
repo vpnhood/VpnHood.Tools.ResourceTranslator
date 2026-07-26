@@ -1,4 +1,5 @@
 using VpnHood.Tools.ResourceTranslator.Translation;
+// ReSharper disable StringLiteralTypo
 
 namespace VpnHood.Tools.ResourceTranslator.Tests;
 

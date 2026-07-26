@@ -112,8 +112,9 @@ i18n/
 
 Everything else works exactly as with a single file: only changed or missing entries are
 translated, and `--show-changes`, `--rebuild-lang`, and `--ignore-changes` apply per file.
-Bookkeeping goes next to your `vhtranslator.json` when one exists (`vh_translator/watches/`), so data
-trees that are consumed verbatim — a Jekyll `_data/` folder, an app bundle — stay clean.
+Bookkeeping goes next to your `vhtranslator.json` when one exists, in a subfolder named after
+the language trees' parent (`vh_translator/watches/i18n/home_watch.json` for `--base i18n/en`),
+so data trees that are consumed verbatim — a Jekyll `_data/` folder, an app bundle — stay clean.
 
 ### Preview first
 
@@ -310,6 +311,12 @@ generates per-language page copies whose bodies are byte-identical by constructi
 structural verification lottery, a fraction of the tokens, and the `titleMustContain` rule
 still applies.
 
+The end state of that pattern moves even `title`/`description` into the data files (as keys the
+site injects at build time, e.g. via a small Jekyll plugin) and drops them from front matter:
+pages then have **no translatable metadata at all** and are written as pure copies without a
+single model call — page metadata gets translated by the incremental key-by-key data pipeline
+like every other string.
+
 > **Pin an exact model version** (e.g. `gemini-2.5-flash`, not `-latest`) — when translations
 > ship without review, silent model drift means silent output drift.
 
@@ -329,7 +336,7 @@ the next run.
 ### How it decides what to translate
 
 After each successful run the tool records a hash of every page in
-`vh_translator/watches/site_watch.json`. On the next run a page is translated for a language when:
+`vh_translator/watches/pages/site_watch.json`. On the next run a page is translated for a language when:
 
 - its **source content changed** since that record, **or**
 - the **target page is missing** for that language.

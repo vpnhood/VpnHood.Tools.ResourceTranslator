@@ -55,7 +55,7 @@ public static partial class SiteOptionsResolver
 
         var rootPath = config.BaseDirectory;
 
-        // Generated locale trees must never be rediscovered as source pages. The exclude is
+        // Generated locale trees must never be rediscovered as source pages. The excluded is
         // derived from the output pattern itself, so custom layouts stay covered too.
         var excludes = BuiltInExcludes
             .Concat(languages.Select(lang => outputPattern

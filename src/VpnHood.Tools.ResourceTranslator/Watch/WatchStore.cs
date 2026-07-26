@@ -26,20 +26,36 @@ public sealed class WatchStore
 
     private readonly string _path;
 
-    /// <summary>Pre-"watches/" location; read when the new path is missing, removed on save.</summary>
-    private readonly string? _legacyPath;
+    /// <summary>Older locations (newest first); read when the new path is missing, removed on save.</summary>
+    private readonly string[] _legacyPaths;
 
-    private WatchStore(string path, string? legacyPath = null)
+    private WatchStore(string path, string[]? legacyPaths = null)
     {
         _path = path;
-        _legacyPath = legacyPath;
+        _legacyPaths = legacyPaths ?? [];
     }
 
     private static WatchStore InPrivateFolder(string privateFolder, string fileName)
     {
         return new WatchStore(
             Path.Combine(privateFolder, WatchesFolderName, fileName),
-            Path.Combine(privateFolder, fileName));
+            [Path.Combine(privateFolder, fileName)]);
+    }
+
+    /// <summary>
+    /// A watch in a namespace subfolder of watches/ (e.g. watches/i18n/, watches/pages/).
+    /// Older releases used a flat file — first prefixed inside watches/, before that directly
+    /// in the private folder; both are still read and are migrated on the next save.
+    /// </summary>
+    private static WatchStore InWatchesSubfolder(string privateFolder, string subfolder, string fileName,
+        string legacyFlatName)
+    {
+        return new WatchStore(
+            Path.Combine(privateFolder, WatchesFolderName, subfolder, fileName),
+            [
+                Path.Combine(privateFolder, WatchesFolderName, legacyFlatName),
+                Path.Combine(privateFolder, legacyFlatName)
+            ]);
     }
 
     public static WatchStore ForBaseFile(string basePath)
@@ -69,9 +85,11 @@ public sealed class WatchStore
             ? Path.Combine(folderParent, PrivateFolderName)
             : GetPrivateFolderForConfig(configPath);
 
-        // The parent folder name keeps files from different language trees apart (i18n_home_watch.json).
-        var name = $"{Path.GetFileName(folderParent)}_{Path.GetFileNameWithoutExtension(baseFilePath)}_watch.json";
-        return InPrivateFolder(privateFolder, name);
+        // A subfolder named after the language trees' parent keeps files from different
+        // bases apart (watches/i18n/home_watch.json vs watches/locales/home_watch.json).
+        var subfolder = Path.GetFileName(folderParent);
+        var stem = Path.GetFileNameWithoutExtension(baseFilePath);
+        return InWatchesSubfolder(privateFolder, subfolder, $"{stem}_watch.json", $"{subfolder}_{stem}_watch.json");
     }
 
     /// <summary>
@@ -95,7 +113,8 @@ public sealed class WatchStore
     public static WatchStore ForSiteRoot(string rootPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
-        return InPrivateFolder(Path.Combine(Path.GetFullPath(rootPath), PrivateFolderName), "site_watch.json");
+        return InWatchesSubfolder(Path.Combine(Path.GetFullPath(rootPath), PrivateFolderName),
+            "pages", "site_watch.json", "site_watch.json");
     }
 
     public static string GetPrivateFolderPath(string basePath)
@@ -111,11 +130,11 @@ public sealed class WatchStore
     /// </summary>
     public async Task<WatchSnapshot> LoadAsync(CancellationToken cancellationToken = default)
     {
-        // Fall back to the pre-"watches/" location so existing projects stay incremental;
+        // Fall back to older locations so existing projects stay incremental;
         // the next save migrates the file.
         var path = _path;
-        if (!File.Exists(path) && _legacyPath != null && File.Exists(_legacyPath))
-            path = _legacyPath;
+        if (!File.Exists(path))
+            path = _legacyPaths.FirstOrDefault(File.Exists) ?? path;
 
         if (!File.Exists(path))
             return WatchSnapshot.Empty;
@@ -156,9 +175,9 @@ public sealed class WatchStore
         var text = JsonSerializer.Serialize(new WatchFile { Items = items }, OutputSerializerOptions);
         await File.WriteAllTextAsync(_path, text, cancellationToken);
 
-        // Complete the migration: the legacy file would otherwise linger as a stale duplicate.
-        if (_legacyPath != null && File.Exists(_legacyPath))
-            File.Delete(_legacyPath);
+        // Complete the migration: legacy files would otherwise linger as stale duplicates.
+        foreach (var legacyPath in _legacyPaths.Where(File.Exists))
+            File.Delete(legacyPath);
     }
 
     private static Dictionary<string, string> ToOrdinal(Dictionary<string, string>? source)

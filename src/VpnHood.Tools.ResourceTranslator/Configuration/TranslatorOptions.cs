@@ -13,8 +13,8 @@ public sealed class TranslatorOptions
     public required string Model { get; init; }
     public required int BatchSize { get; init; }
 
-    /// <summary>Absolute path to extra prompt instructions, or null when none apply.</summary>
-    public string? ExtraPromptPath { get; init; }
+    /// <summary>Project prompt instructions (shared + per-language); never null.</summary>
+    public ExtraPromptStore ExtraPrompt { get; init; } = ExtraPromptStore.Empty;
 
     /// <summary>Explicit target languages from config; empty means "discover sibling locale files".</summary>
     public IReadOnlyList<string> Languages { get; init; } = [];

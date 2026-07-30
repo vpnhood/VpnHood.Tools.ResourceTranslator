@@ -1,3 +1,4 @@
+using VpnHood.Tools.ResourceTranslator.Configuration;
 using VpnHood.Tools.ResourceTranslator.Site;
 using VpnHood.Tools.ResourceTranslator.Translation;
 // ReSharper disable StringLiteralTypo
@@ -49,9 +50,11 @@ public class SiteTranslationRunnerTests
         TestWorkspace workspace,
         string? configPath,
         PageBodyMode pageBody = PageBodyMode.Translate,
+        ExtraPromptStore? extraPrompt = null,
         params string[] dataFiles)
     {
         return new SiteOptions {
+            ExtraPrompt = extraPrompt ?? ExtraPromptStore.Empty,
             RootPath = workspace.Path,
             PagePatterns = ["**/index.html"],
             ExcludePatterns = ["_site/**", "vh_translator/**", "fr/**", "de/**"],
@@ -102,6 +105,30 @@ public class SiteTranslationRunnerTests
         Assert.IsTrue(french.Contains("href=\"/free-vpn/download/\""), "Links must be untouched");
         Assert.IsTrue(french.Contains("[fr]"), "Body must be translated");
         Assert.IsTrue(workspace.Exists("vh_translator/watches/pages/site_watch.json"), "Watch file must be recorded");
+    }
+
+    [TestMethod]
+    public async Task Run_sends_per_language_prompt_only_to_its_own_language()
+    {
+        using var workspace = new TestWorkspace();
+        workspace.WriteFile("index.html", HomePage);
+        workspace.WriteFile("vh_translator/prompt.txt", "SHARED-RULES");
+        workspace.WriteFile("vh_translator/prompts/fr_prompt.txt", "FRENCH-RULES");
+
+        var extraPrompt = ExtraPromptStore.Resolve(
+            explicitSharedPath: null, [Path.Combine(workspace.Path, "vh_translator")]);
+        var translator = new FakeTranslator();
+        var runner = CreateRunner(
+            CreateOptionsWithConfig(workspace, configPath: null, extraPrompt: extraPrompt), translator);
+
+        var exitCode = await runner.RunAsync();
+
+        Assert.AreEqual(ExitCodes.Success, exitCode);
+        StringAssert.Contains(translator.PromptsByLanguage["fr"], "SHARED-RULES");
+        StringAssert.Contains(translator.PromptsByLanguage["fr"], "FRENCH-RULES");
+        StringAssert.Contains(translator.PromptsByLanguage["de"], "SHARED-RULES");
+        Assert.IsFalse(translator.PromptsByLanguage["de"].Contains("FRENCH-RULES"),
+            "Another language's prompt must not leak into this one");
     }
 
     [TestMethod]

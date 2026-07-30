@@ -18,11 +18,16 @@ public sealed class FakeTranslator : ITranslator
     /// <summary>Every key handed to the translator, in call order.</summary>
     public List<string> TranslatedKeys { get; } = [];
 
+    /// <summary>Last prompt seen per target language, so tests can assert prompt composition.</summary>
+    public Dictionary<string, string> PromptsByLanguage { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public int CallCount { get; private set; }
 
     public Task<TranslateResult[]> TranslateAsync(PromptOptions promptOptions, CancellationToken cancellationToken)
     {
         CallCount++;
+        foreach (var language in promptOptions.Items.Select(item => item.TargetLanguage).Distinct())
+            PromptsByLanguage[language] = promptOptions.Prompt;
 
         var results = promptOptions.Items.Select(item => {
             TranslatedKeys.Add(item.Key);

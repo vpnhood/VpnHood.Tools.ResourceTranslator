@@ -77,7 +77,7 @@ public static partial class SiteOptionsResolver
             BatchSize = batchSize,
             TitleMustContain = site.TitleMustContain,
             PageBodyMode = ParsePageBodyMode(site.PageBody),
-            ExtraPromptPath = ResolveExtraPromptPath(commandLine, config, rootPath),
+            ExtraPrompt = ResolveExtraPrompt(commandLine, config, rootPath),
             ApiKey = ResolveApiKey(commandLine, selection.Engine),
             ConfigPath = config.SourcePath
         };
@@ -128,25 +128,14 @@ public static partial class SiteOptionsResolver
         return EngineModelSelector.Select(engine, model);
     }
 
-    private static string? ResolveExtraPromptPath(CommandLineOptions commandLine, TranslatorConfig config, string rootPath)
+    private static ExtraPromptStore ResolveExtraPrompt(CommandLineOptions commandLine, TranslatorConfig config, string rootPath)
     {
-        if (!string.IsNullOrWhiteSpace(commandLine.ExtraPromptPath)) {
-            var explicitPath = Path.GetFullPath(commandLine.ExtraPromptPath);
-            if (!File.Exists(explicitPath))
-                throw new TranslatorException($"Extra prompt file not found: {explicitPath}", ExitCodes.FileNotFound);
-            return explicitPath;
-        }
+        var explicitPath = !string.IsNullOrWhiteSpace(commandLine.ExtraPromptPath)
+            ? Path.GetFullPath(commandLine.ExtraPromptPath)
+            : config.ResolvePath(config.ExtraPrompt);
 
-        var fromConfig = config.ResolvePath(config.ExtraPrompt);
-        if (!string.IsNullOrWhiteSpace(fromConfig)) {
-            if (!File.Exists(fromConfig))
-                throw new TranslatorException($"Extra prompt file not found: {fromConfig}", ExitCodes.FileNotFound);
-            return fromConfig;
-        }
-
-        // Same convention as the classic pipeline: vh_translator/custom_prompt.txt at the root.
-        var conventional = Path.Combine(rootPath, WatchStore.PrivateFolderName, "custom_prompt.txt");
-        return File.Exists(conventional) ? conventional : null;
+        // Same convention as the classic pipeline: the vh_translator folder at the site root.
+        return ExtraPromptStore.Resolve(explicitPath, [Path.Combine(rootPath, WatchStore.PrivateFolderName)]);
     }
 
     private static string? ResolveApiKey(CommandLineOptions commandLine, TranslationEngine engine)

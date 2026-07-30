@@ -103,9 +103,6 @@ public sealed class SiteTranslationRunner
         }
         else {
             var translator = _translatorFactory();
-            var extraPrompt = _options.ExtraPromptPath == null
-                ? null
-                : await File.ReadAllTextAsync(_options.ExtraPromptPath, cancellationToken);
             var basePrompt = await LoadSitePromptAsync(cancellationToken);
 
             var done = 0;
@@ -114,7 +111,7 @@ public sealed class SiteTranslationRunner
                 var pageOk = true;
                 foreach (var language in work.Languages) {
                     cancellationToken.ThrowIfCancellationRequested();
-                    pageOk &= await TranslatePageAsync(work, language, translator, basePrompt, extraPrompt, cancellationToken);
+                    pageOk &= await TranslatePageAsync(work, language, translator, basePrompt, cancellationToken);
                     _reporter.Progress(work.RelativePath, ++done, total);
                 }
 
@@ -147,11 +144,11 @@ public sealed class SiteTranslationRunner
         string language,
         ITranslator translator,
         string basePrompt,
-        string? extraPrompt,
         CancellationToken cancellationToken)
     {
         var targetPath = _options.GetTargetFullPath(work.RelativePath, language);
         var targetRelative = _options.GetTargetRelativePath(work.RelativePath, language);
+        var extraPrompt = await _options.ExtraPrompt.LoadAsync(language, cancellationToken);
 
         // Never clobber a page a human wrote at this path; generated files carry a marker.
         if (File.Exists(targetPath) &&
@@ -454,7 +451,7 @@ public sealed class SiteTranslationRunner
                 Engine = _options.Engine,
                 Model = _options.Model,
                 BatchSize = _options.BatchSize,
-                ExtraPromptPath = _options.ExtraPromptPath,
+                ExtraPrompt = _options.ExtraPrompt,
                 Languages = _options.Languages,
                 ApiKey = _options.ApiKey,
                 ConfigPath = _options.ConfigPath

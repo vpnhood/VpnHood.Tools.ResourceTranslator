@@ -39,7 +39,7 @@ public static class TranslatorOptionsResolver
             Engine = selection.Engine,
             Model = selection.Model,
             BatchSize = batchSize,
-            ExtraPromptPath = ResolveExtraPromptPath(commandLine, config, basePath),
+            ExtraPrompt = ResolveExtraPrompt(commandLine, config, basePath),
             Languages = config.Languages ?? [],
             ApiKey = ResolveApiKey(commandLine, selection.Engine),
             ConfigPath = config.SourcePath
@@ -83,37 +83,22 @@ public static class TranslatorOptionsResolver
         return EngineModelSelector.Select(engine, model);
     }
 
-    private static string? ResolveExtraPromptPath(CommandLineOptions commandLine, TranslatorConfig config, string basePath)
+    private static ExtraPromptStore ResolveExtraPrompt(CommandLineOptions commandLine, TranslatorConfig config, string basePath)
     {
-        if (!string.IsNullOrWhiteSpace(commandLine.ExtraPromptPath)) {
-            var explicitPath = Path.GetFullPath(commandLine.ExtraPromptPath);
-            if (!File.Exists(explicitPath))
-                throw new TranslatorException($"Extra prompt file not found: {explicitPath}", ExitCodes.FileNotFound);
-            return explicitPath;
-        }
-
-        var fromConfig = config.ResolvePath(config.ExtraPrompt);
-        if (!string.IsNullOrWhiteSpace(fromConfig)) {
-            if (!File.Exists(fromConfig))
-                throw new TranslatorException($"Extra prompt file not found: {fromConfig}", ExitCodes.FileNotFound);
-            return fromConfig;
-        }
-
-        // Legacy convention: vh_translator/custom_prompt.txt next to the base file.
-        var conventional = Path.Combine(Watch.WatchStore.GetPrivateFolderPath(basePath), "custom_prompt.txt");
-        if (File.Exists(conventional))
-            return conventional;
-
-        // Config-adjacent convention, so a base anywhere in the tree still picks up the
-        // project's shared instructions (e.g. a brand glossary).
+        // Private folders in priority order: next to the base file, then next to the config —
+        // so a base anywhere in the tree still picks up the project's shared instructions.
+        var privateFolders = new List<string> { Watch.WatchStore.GetPrivateFolderPath(basePath) };
         if (!string.IsNullOrWhiteSpace(config.SourcePath)) {
-            var configConventional = Path.Combine(
-                Watch.WatchStore.GetPrivateFolderForConfig(config.SourcePath), "custom_prompt.txt");
-            if (File.Exists(configConventional))
-                return configConventional;
+            var configFolder = Watch.WatchStore.GetPrivateFolderForConfig(config.SourcePath);
+            if (!privateFolders.Contains(configFolder, StringComparer.OrdinalIgnoreCase))
+                privateFolders.Add(configFolder);
         }
 
-        return null;
+        var explicitPath = !string.IsNullOrWhiteSpace(commandLine.ExtraPromptPath)
+            ? Path.GetFullPath(commandLine.ExtraPromptPath)
+            : config.ResolvePath(config.ExtraPrompt);
+
+        return ExtraPromptStore.Resolve(explicitPath, privateFolders);
     }
 
     private static string? ResolveApiKey(CommandLineOptions commandLine, TranslationEngine engine)

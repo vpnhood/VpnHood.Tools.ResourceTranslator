@@ -373,8 +373,9 @@ The marker in a generated page's front matter is what makes automation safe arou
 ## Customizing translations
 
 Add project rules via `--extra-prompt`, the `extraPrompt` config key, or by creating
-`vh_translator/custom_prompt.txt` next to your base file / at your site root, which is picked up
-automatically. The same rules apply to both modes:
+`vh_translator/prompt.txt` next to your base file / at your site root, which is picked up
+automatically (the pre-1.2 name `custom_prompt.txt` still works). The same rules apply to both
+modes:
 
 ```text
 - Keep "VPN", "API", and "JSON" untranslated
@@ -385,6 +386,25 @@ automatically. The same rules apply to both modes:
 
 Returning `*` skips an entry (resource files only): the existing translation is kept, or the
 source text is used if there is none. Useful for brand names, URLs, and region-specific strings.
+
+### Per-language rules
+
+Rules for a single language go into an optional `prompts/` subfolder, one file per target
+language named `{lang}_prompt.txt` — `{lang}` being the locale file stem (or the site language
+code):
+
+```text
+vh_translator/
+  prompt.txt              # shared — sent for every language
+  prompts/
+    fa_prompt.txt         # appended after the shared prompt, only when translating fa
+    pt-BR_prompt.txt
+```
+
+A language without its own file just gets the shared prompt; a `prompts/` folder works with or
+without a shared `prompt.txt`. Note that editing prompt files does not retranslate entries that
+are already current — the watch tracks source text only. Use `--rebuild-lang` to reapply new
+rules to a whole language.
 
 ## Continuous integration
 
@@ -412,6 +432,8 @@ Shared options:
       --config <path>        Config file to use (default: nearest vhtranslator.json,
                              also found inside vh_translator/)
   -x, --extra-prompt <path>  Extra instructions appended to the AI prompt
+                             (default: vh_translator/prompt.txt; per-language files in
+                             vh_translator/prompts/, e.g. fa_prompt.txt, are appended after it)
   -c, --show-changes         List what would be translated and exit (no API key needed)
   -r, --rebuild-lang <code>  Force retranslation of everything for one language
                              (site mode: the pages and all "data" files)

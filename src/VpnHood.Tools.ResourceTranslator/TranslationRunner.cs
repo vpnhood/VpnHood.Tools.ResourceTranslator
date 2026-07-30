@@ -95,7 +95,7 @@ public sealed class TranslationRunner
             Engine = options.Engine,
             Model = options.Model,
             BatchSize = options.BatchSize,
-            ExtraPromptPath = options.ExtraPromptPath,
+            ExtraPrompt = options.ExtraPrompt,
             Languages = options.Languages,
             ApiKey = options.ApiKey,
             ConfigPath = options.ConfigPath
@@ -159,7 +159,6 @@ public sealed class TranslationRunner
         var changedKeys = snapshot.GetChangedKeys(baseFile.Map);
         var sourceLanguage = _format.GetLanguageCode(_options.BasePath);
         var prompt = await LoadPromptAsync(cancellationToken);
-        var extraPrompt = await LoadExtraPromptAsync(cancellationToken);
         var translator = _translatorFactory();
 
         var targets = ResolveTargets();
@@ -167,7 +166,7 @@ public sealed class TranslationRunner
             _reporter.Warn("No target locale files found to translate.");
 
         foreach (var target in targets) {
-            await TranslateFileAsync(target, baseFile, changedKeys, translator, prompt, extraPrompt,
+            await TranslateFileAsync(target, baseFile, changedKeys, translator, prompt,
                 sourceLanguage, cancellationToken);
         }
 
@@ -186,12 +185,11 @@ public sealed class TranslationRunner
         var baseFile = await LoadBaseFileAsync(cancellationToken);
         var sourceLanguage = _format.GetLanguageCode(_options.BasePath);
         var prompt = await LoadPromptAsync(cancellationToken);
-        var extraPrompt = await LoadExtraPromptAsync(cancellationToken);
         var translator = _translatorFactory();
 
         var target = new TranslationTarget(_format.GetLocaleFilePath(_options.BasePath, languageCode), IsRebuild: true);
         await TranslateFileAsync(target, baseFile, baseFile.Map.Keys.ToHashSet(StringComparer.Ordinal), translator,
-            prompt, extraPrompt, sourceLanguage, cancellationToken);
+            prompt, sourceLanguage, cancellationToken);
 
         await _watchStore.SaveAsync(baseFile.OrderedKeys, baseFile.Map, cancellationToken);
         _reporter.Info("Done.");
@@ -216,13 +214,13 @@ public sealed class TranslationRunner
         HashSet<string> changedKeys,
         ITranslator translator,
         string prompt,
-        string? extraPrompt,
         string sourceLanguage,
         CancellationToken cancellationToken)
     {
         var localePath = target.Path;
         var localeCode = _format.GetLanguageCode(localePath);
         var localeFileName = Path.GetFileName(localePath);
+        var extraPrompt = await _options.ExtraPrompt.LoadAsync(localeCode, cancellationToken);
 
         var localeMap = LoadLocaleMap(localePath);
         var output = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -386,13 +384,6 @@ public sealed class TranslationRunner
             throw new TranslatorException($"Built-in prompt template is missing: {promptFile}", ExitCodes.FileNotFound);
 
         return await File.ReadAllTextAsync(promptFile, cancellationToken);
-    }
-
-    private async Task<string?> LoadExtraPromptAsync(CancellationToken cancellationToken)
-    {
-        return string.IsNullOrWhiteSpace(_options.ExtraPromptPath)
-            ? null
-            : await File.ReadAllTextAsync(_options.ExtraPromptPath, cancellationToken);
     }
 
     private sealed record BaseFile(List<string> OrderedKeys, Dictionary<string, string> Map);

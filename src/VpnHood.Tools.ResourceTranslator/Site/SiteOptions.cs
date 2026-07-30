@@ -1,3 +1,4 @@
+using VpnHood.Tools.ResourceTranslator.Configuration;
 using VpnHood.Tools.ResourceTranslator.Translation;
 
 namespace VpnHood.Tools.ResourceTranslator.Site;
@@ -45,8 +46,8 @@ public sealed class SiteOptions
     /// <summary>What to do with page bodies. Default: translate them.</summary>
     public PageBodyMode PageBodyMode { get; init; } = PageBodyMode.Translate;
 
-    /// <summary>Absolute path to extra prompt instructions, or null when none apply.</summary>
-    public string? ExtraPromptPath { get; init; }
+    /// <summary>Project prompt instructions (shared + per-language); never null.</summary>
+    public ExtraPromptStore ExtraPrompt { get; init; } = ExtraPromptStore.Empty;
 
     /// <summary>Null until a translating command needs it; --show-changes works without one.</summary>
     public string? ApiKey { get; init; }

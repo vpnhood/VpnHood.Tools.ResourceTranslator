@@ -1,4 +1,5 @@
 using System.Text.Json;
+using VpnHood.Tools.ResourceTranslator.Cli;
 using VpnHood.Tools.ResourceTranslator.Configuration;
 using VpnHood.Tools.ResourceTranslator.Translation;
 
@@ -234,6 +235,31 @@ public sealed class TranslationRunnerTests
         Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "locales", "en_watch.json")));
         Assert.IsFalse(workspace.Exists(Path.Combine("src", "locales", "vh_translator", "en_watch.json")),
             "The base-adjacent copy must be removed after migration");
+    }
+
+    [TestMethod]
+    public async Task RunAsync_SendsPerLanguagePromptOnlyToItsOwnLanguage()
+    {
+        using var workspace = new TestWorkspace();
+        var basePath = workspace.WriteFile("en.json", BaseJson);
+        workspace.WriteFile("fr.json", "{}");
+        workspace.WriteFile("de.json", "{}");
+        workspace.WriteFile(Path.Combine("vh_translator", "prompt.txt"), "SHARED-RULES");
+        workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fr_prompt.txt"), "FRENCH-RULES");
+
+        // Resolved (not hand-built) options, so the conventional prompt files are discovered.
+        var options = TranslatorOptionsResolver.Resolve(new CommandLineOptions { BasePath = basePath });
+        var translator = new FakeTranslator();
+        await new TranslationRunner(options, translatorFactory: () => translator).RunAsync();
+
+        StringAssert.Contains(translator.PromptsByLanguage["fr"], "SHARED-RULES");
+        StringAssert.Contains(translator.PromptsByLanguage["fr"], "FRENCH-RULES");
+        Assert.IsTrue(translator.PromptsByLanguage["fr"].IndexOf("SHARED-RULES", StringComparison.Ordinal) <
+                      translator.PromptsByLanguage["fr"].IndexOf("FRENCH-RULES", StringComparison.Ordinal),
+            "The shared prompt must come before the per-language one");
+        StringAssert.Contains(translator.PromptsByLanguage["de"], "SHARED-RULES");
+        Assert.IsFalse(translator.PromptsByLanguage["de"].Contains("FRENCH-RULES"),
+            "Another language's prompt must not leak into this one");
     }
 
     private static TranslationRunner CreateRunner(string basePath, ITranslator translator)

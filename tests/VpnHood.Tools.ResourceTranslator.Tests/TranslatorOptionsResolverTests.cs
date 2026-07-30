@@ -110,7 +110,19 @@ public sealed class TranslatorOptionsResolverTests
     }
 
     [TestMethod]
-    public void Resolve_PicksUpConventionalCustomPromptFile()
+    public void Resolve_PicksUpConventionalPromptFile()
+    {
+        using var workspace = new TestWorkspace();
+        var basePath = workspace.WriteFile("en.json", "{}");
+        var promptPath = workspace.WriteFile(Path.Combine("vh_translator", "prompt.txt"), "Keep brand names.");
+
+        var options = TranslatorOptionsResolver.Resolve(new CommandLineOptions { BasePath = basePath });
+
+        Assert.AreEqual(promptPath, options.ExtraPrompt.SharedPromptPath);
+    }
+
+    [TestMethod]
+    public void Resolve_StillHonorsLegacyCustomPromptFile()
     {
         using var workspace = new TestWorkspace();
         var basePath = workspace.WriteFile("en.json", "{}");
@@ -118,7 +130,77 @@ public sealed class TranslatorOptionsResolverTests
 
         var options = TranslatorOptionsResolver.Resolve(new CommandLineOptions { BasePath = basePath });
 
-        Assert.AreEqual(promptPath, options.ExtraPromptPath);
+        Assert.AreEqual(promptPath, options.ExtraPrompt.SharedPromptPath);
+    }
+
+    [TestMethod]
+    public void Resolve_PrefersPromptFileOverLegacyName()
+    {
+        using var workspace = new TestWorkspace();
+        var basePath = workspace.WriteFile("en.json", "{}");
+        var promptPath = workspace.WriteFile(Path.Combine("vh_translator", "prompt.txt"), "Current.");
+        workspace.WriteFile(Path.Combine("vh_translator", "custom_prompt.txt"), "Legacy.");
+
+        var options = TranslatorOptionsResolver.Resolve(new CommandLineOptions { BasePath = basePath });
+
+        Assert.AreEqual(promptPath, options.ExtraPrompt.SharedPromptPath);
+    }
+
+    [TestMethod]
+    public async Task ExtraPrompt_AppendsPerLanguagePromptAfterSharedOne()
+    {
+        using var workspace = new TestWorkspace();
+        var basePath = workspace.WriteFile("en.json", "{}");
+        workspace.WriteFile(Path.Combine("vh_translator", "prompt.txt"), "Shared rules.");
+        workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fr_prompt.txt"), "French rules.");
+
+        var options = TranslatorOptionsResolver.Resolve(new CommandLineOptions { BasePath = basePath });
+
+        Assert.AreEqual("Shared rules.\n\nFrench rules.", await options.ExtraPrompt.LoadAsync("fr", CancellationToken.None));
+        Assert.AreEqual("Shared rules.", await options.ExtraPrompt.LoadAsync("de", CancellationToken.None));
+    }
+
+    [TestMethod]
+    public async Task ExtraPrompt_PerLanguagePromptWorksWithoutSharedOne()
+    {
+        using var workspace = new TestWorkspace();
+        var basePath = workspace.WriteFile("en.json", "{}");
+        workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fa_prompt.txt"), "Persian rules.");
+
+        var options = TranslatorOptionsResolver.Resolve(new CommandLineOptions { BasePath = basePath });
+
+        Assert.IsNull(options.ExtraPrompt.SharedPromptPath);
+        Assert.AreEqual("Persian rules.", await options.ExtraPrompt.LoadAsync("fa", CancellationToken.None));
+        Assert.IsNull(await options.ExtraPrompt.LoadAsync("de", CancellationToken.None));
+    }
+
+    [TestMethod]
+    public async Task ExtraPrompt_FindsPerLanguagePromptInConfigAdjacentFolder()
+    {
+        using var workspace = new TestWorkspace();
+        var basePath = workspace.WriteFile("src/locales/en.json", "{}");
+        workspace.WriteFile(Path.Combine("vh_translator", "vhtranslator.json"), "{}");
+        workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fr_prompt.txt"), "French rules.");
+
+        var options = TranslatorOptionsResolver.Resolve(new CommandLineOptions { BasePath = basePath });
+
+        Assert.AreEqual("French rules.", await options.ExtraPrompt.LoadAsync("fr", CancellationToken.None));
+    }
+
+    [TestMethod]
+    public void ExtraPrompt_ListsEveryPromptFileForStartupLogging()
+    {
+        using var workspace = new TestWorkspace();
+        var basePath = workspace.WriteFile("en.json", "{}");
+        var sharedPath = workspace.WriteFile(Path.Combine("vh_translator", "prompt.txt"), "Shared.");
+        var frPath = workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fr_prompt.txt"), "French.");
+        var faPath = workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fa_prompt.txt"), "Persian.");
+
+        var options = TranslatorOptionsResolver.Resolve(new CommandLineOptions { BasePath = basePath });
+
+        // Shared first, then the per-language files in stable (alphabetical) order.
+        CollectionAssert.AreEqual(new[] { sharedPath, faPath, frPath },
+            options.ExtraPrompt.GetPromptFilePaths().ToArray());
     }
 
     [TestMethod]

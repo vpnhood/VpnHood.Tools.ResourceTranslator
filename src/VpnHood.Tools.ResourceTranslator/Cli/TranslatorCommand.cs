@@ -23,7 +23,10 @@ public static class TranslatorCommand
                           $"or parent folders, also searched inside {Watch.WatchStore.PrivateFolderName}/)"
         };
         var extraPromptOption = new Option<string?>("--extra-prompt", "-x") {
-            Description = "Path to extra instructions appended to the AI prompt"
+            Description = "Path to extra instructions appended to the AI prompt " +
+                          $"(default: {Watch.WatchStore.PrivateFolderName}/{ExtraPromptStore.SharedPromptFileName}); " +
+                          $"per-language files in {Watch.WatchStore.PrivateFolderName}/{ExtraPromptStore.PromptsFolderName}/ " +
+                          "(e.g. fa_prompt.txt) are appended after it"
         };
         var showChangesOption = new Option<bool>("--show-changes", "-c") {
             Description = "List what would be translated (changed and missing items) and exit; needs no API key"
@@ -132,6 +135,8 @@ public static class TranslatorCommand
             var options = SiteOptionsResolver.Resolve(commandLine);
             if (options.ConfigPath != null)
                 reporter.Info($"Using config: {options.ConfigPath}");
+            foreach (var promptFile in options.ExtraPrompt.GetPromptFilePaths())
+                reporter.Info($"Using prompt: {promptFile}");
 
             var runner = new SiteTranslationRunner(options, reporter);
 
@@ -164,6 +169,8 @@ public static class TranslatorCommand
             var options = TranslatorOptionsResolver.Resolve(commandLine);
             if (options.ConfigPath != null)
                 reporter.Info($"Using config: {options.ConfigPath}");
+            foreach (var promptFile in options.ExtraPrompt.GetPromptFilePaths())
+                reporter.Info($"Using prompt: {promptFile}");
 
             var runner = new TranslationRunner(options, reporter);
 

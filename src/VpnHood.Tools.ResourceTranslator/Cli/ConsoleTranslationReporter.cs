@@ -5,7 +5,7 @@ public sealed class ConsoleTranslationReporter : ITranslationReporter
 {
     // Redirected stdout (CI pipes, log files) is block-buffered by the runtime, so lines
     // can surface only when a buffer fills — on GitHub Actions the translate step then
-    // looks silent for minutes while working. Flush per line to keep live logs live;
+    // looks silent for minutes while working. Flush per line to keep logs live;
     // an interactive console flushes on its own.
     private static readonly bool FlushEachLine = Console.IsOutputRedirected;
 

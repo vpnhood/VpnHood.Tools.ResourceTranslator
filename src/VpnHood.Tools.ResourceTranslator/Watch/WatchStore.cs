@@ -35,26 +35,43 @@ public sealed class WatchStore
         _legacyPaths = legacyPaths ?? [];
     }
 
-    private static WatchStore InPrivateFolder(string privateFolder, string fileName)
+    /// <summary>Watch file name for one base stem (e.g. <c>en.watch.json</c>).</summary>
+    private static string GetWatchFileName(string stem)
+    {
+        return $"{stem}.watch.json";
+    }
+
+    /// <summary>Name used by pre-1.2.2 releases; still read and migrated on the next save.</summary>
+    private static string GetLegacyWatchFileName(string stem)
+    {
+        return $"{stem}_watch.json";
+    }
+
+    private static WatchStore InPrivateFolder(string privateFolder, string stem)
     {
         return new WatchStore(
-            Path.Combine(privateFolder, WatchesFolderName, fileName),
-            [Path.Combine(privateFolder, fileName)]);
+            Path.Combine(privateFolder, WatchesFolderName, GetWatchFileName(stem)),
+            [
+                Path.Combine(privateFolder, WatchesFolderName, GetLegacyWatchFileName(stem)),
+                Path.Combine(privateFolder, GetLegacyWatchFileName(stem))
+            ]);
     }
 
     /// <summary>
     /// A watch in a namespace subfolder of watches/ (e.g. watches/i18n/, watches/pages/).
-    /// Older releases used a flat file — first prefixed inside watches/, before that directly
-    /// in the private folder; both are still read and are migrated on the next save.
+    /// Older releases used an underscore name — first in the subfolder, before that a prefixed
+    /// flat file inside watches/, and originally directly in the private folder; all are still
+    /// read and are migrated on the next save.
     /// </summary>
-    private static WatchStore InWatchesSubfolder(string privateFolder, string subfolder, string fileName,
-        string legacyFlatName)
+    private static WatchStore InWatchesSubfolder(string privateFolder, string subfolder, string stem,
+        string legacyFlatStem)
     {
         return new WatchStore(
-            Path.Combine(privateFolder, WatchesFolderName, subfolder, fileName),
+            Path.Combine(privateFolder, WatchesFolderName, subfolder, GetWatchFileName(stem)),
             [
-                Path.Combine(privateFolder, WatchesFolderName, legacyFlatName),
-                Path.Combine(privateFolder, legacyFlatName)
+                Path.Combine(privateFolder, WatchesFolderName, subfolder, GetLegacyWatchFileName(stem)),
+                Path.Combine(privateFolder, WatchesFolderName, GetLegacyWatchFileName(legacyFlatStem)),
+                Path.Combine(privateFolder, GetLegacyWatchFileName(legacyFlatStem))
             ]);
     }
 
@@ -63,7 +80,7 @@ public sealed class WatchStore
         ArgumentException.ThrowIfNullOrWhiteSpace(basePath);
         var baseName = Path.GetFileNameWithoutExtension(basePath);
         if (string.IsNullOrWhiteSpace(configPath))
-            return InPrivateFolder(GetPrivateFolderPath(basePath), $"{baseName}_watch.json");
+            return InPrivateFolder(GetPrivateFolderPath(basePath), baseName);
 
         // With a config the bookkeeping goes next to it (like folder mode), namespaced by the
         // base file's folder, so the resource tree itself stays clean. Base-adjacent locations
@@ -71,10 +88,12 @@ public sealed class WatchStore
         var baseAdjacent = GetPrivateFolderPath(basePath);
         var subfolder = Path.GetFileName(Path.GetDirectoryName(Path.GetFullPath(basePath)))!;
         return new WatchStore(
-            Path.Combine(GetPrivateFolderForConfig(configPath), WatchesFolderName, subfolder, $"{baseName}_watch.json"),
+            Path.Combine(GetPrivateFolderForConfig(configPath), WatchesFolderName, subfolder, GetWatchFileName(baseName)),
             [
-                Path.Combine(baseAdjacent, WatchesFolderName, $"{baseName}_watch.json"),
-                Path.Combine(baseAdjacent, $"{baseName}_watch.json")
+                Path.Combine(GetPrivateFolderForConfig(configPath), WatchesFolderName, subfolder, GetLegacyWatchFileName(baseName)),
+                Path.Combine(baseAdjacent, WatchesFolderName, GetWatchFileName(baseName)),
+                Path.Combine(baseAdjacent, WatchesFolderName, GetLegacyWatchFileName(baseName)),
+                Path.Combine(baseAdjacent, GetLegacyWatchFileName(baseName))
             ]);
     }
 
@@ -99,10 +118,10 @@ public sealed class WatchStore
             : GetPrivateFolderForConfig(configPath);
 
         // A subfolder named after the language trees' parent keeps files from different
-        // bases apart (watches/i18n/home_watch.json vs watches/locales/home_watch.json).
+        // bases apart (watches/i18n/home.watch.json vs watches/locales/home.watch.json).
         var subfolder = Path.GetFileName(folderParent);
         var stem = Path.GetFileNameWithoutExtension(baseFilePath);
-        return InWatchesSubfolder(privateFolder, subfolder, $"{stem}_watch.json", $"{subfolder}_{stem}_watch.json");
+        return InWatchesSubfolder(privateFolder, subfolder, stem, $"{subfolder}_{stem}");
     }
 
     /// <summary>
@@ -127,7 +146,7 @@ public sealed class WatchStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
         return InWatchesSubfolder(Path.Combine(Path.GetFullPath(rootPath), PrivateFolderName),
-            "pages", "site_watch.json", "site_watch.json");
+            "pages", "site", "site");
     }
 
     public static string GetPrivateFolderPath(string basePath)

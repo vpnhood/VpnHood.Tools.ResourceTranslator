@@ -54,10 +54,10 @@ variable name).
 `ExitCodes` value. Exit codes are a contract with CI scripts — keep them stable. Anything else
 is a bug and should surface with its stack trace.
 
-**Change tracking:** `vh_translator/<base>_watch.json` stores the source text last translated per
-key. A missing or corrupt watch file means "nothing is known to be current", so everything is
-retranslated — that is deliberate, not a bug. Legacy MD5-hash watch files are migrated on the
-next successful save.
+**Change tracking:** `vh_translator/watches/<base>.watch.json` stores the source text last
+translated per key. A missing or corrupt watch file means "nothing is known to be current", so
+everything is retranslated — that is deliberate, not a bug. Legacy MD5-hash watch files and the
+older `_watch.json` names/locations are migrated on the next successful save.
 
 **Site pipeline (`Site/`):** `SiteTranslationRunner` mirrors `TranslationRunner` for whole pages:
 discover (`SitePageDiscovery` globs) → mask Liquid (`LiquidMasker`) → translate title/description/

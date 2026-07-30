@@ -26,7 +26,7 @@ public static class TranslatorCommand
             Description = "Path to extra instructions appended to the AI prompt " +
                           $"(default: {Watch.WatchStore.PrivateFolderName}/{ExtraPromptStore.SharedPromptFileName}); " +
                           $"per-language files in {Watch.WatchStore.PrivateFolderName}/{ExtraPromptStore.PromptsFolderName}/ " +
-                          "(e.g. fa_prompt.txt) are appended after it"
+                          "(e.g. fa.prompt.txt) are appended after it"
         };
         var showChangesOption = new Option<bool>("--show-changes", "-c") {
             Description = "List what would be translated (changed and missing items) and exit; needs no API key"

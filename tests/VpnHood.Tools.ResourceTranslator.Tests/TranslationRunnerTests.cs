@@ -167,7 +167,7 @@ public sealed class TranslationRunnerTests
 
         // fr.json is still empty, so entries count as missing and are filled — but none as "changed".
         Assert.AreEqual(3, translator.TranslatedKeys.Count);
-        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "en_watch.json")));
+        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "en.watch.json")));
     }
 
     [TestMethod]
@@ -188,8 +188,30 @@ public sealed class TranslationRunnerTests
         CollectionAssert.AreEquivalent(new[] { "FAREWELL", "SETTINGS" }, translator.TranslatedKeys);
 
         // ...and the file now lives in watches/, with the legacy copy gone.
-        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "en_watch.json")));
+        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "en.watch.json")));
         Assert.IsFalse(workspace.Exists(Path.Combine("vh_translator", "en_watch.json")));
+    }
+
+    [TestMethod]
+    public async Task RunAsync_MigratesUnderscoreWatchFileToDotName()
+    {
+        using var workspace = new TestWorkspace();
+        var basePath = workspace.WriteFile("en.json", BaseJson);
+        workspace.WriteFile("fr.json", """{ "GREETING": "Bonjour" }""");
+
+        // A watch file from 1.2.1 and earlier, already inside watches/ but with the old name.
+        workspace.WriteFile("vh_translator/watches/en_watch.json",
+            """{ "version": 1, "items": { "GREETING": "Hello", "FAREWELL": "Goodbye", "SETTINGS": "Settings" } }""");
+
+        var translator = new FakeTranslator();
+        await CreateRunner(basePath, translator).RunAsync();
+
+        // The old snapshot was honored (nothing counted as changed, only missing filled)...
+        CollectionAssert.AreEquivalent(new[] { "FAREWELL", "SETTINGS" }, translator.TranslatedKeys);
+
+        // ...and the file was renamed in place.
+        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "en.watch.json")));
+        Assert.IsFalse(workspace.Exists(Path.Combine("vh_translator", "watches", "en_watch.json")));
     }
 
     [TestMethod]
@@ -232,7 +254,7 @@ public sealed class TranslationRunnerTests
         CollectionAssert.AreEquivalent(new[] { "FAREWELL", "SETTINGS" }, translator.TranslatedKeys);
 
         // ...and the bookkeeping now lives next to the config, out of the resource tree.
-        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "locales", "en_watch.json")));
+        Assert.IsTrue(workspace.Exists(Path.Combine("vh_translator", "watches", "locales", "en.watch.json")));
         Assert.IsFalse(workspace.Exists(Path.Combine("src", "locales", "vh_translator", "en_watch.json")),
             "The base-adjacent copy must be removed after migration");
     }
@@ -245,7 +267,7 @@ public sealed class TranslationRunnerTests
         workspace.WriteFile("fr.json", "{}");
         workspace.WriteFile("de.json", "{}");
         workspace.WriteFile(Path.Combine("vh_translator", "prompt.txt"), "SHARED-RULES");
-        workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fr_prompt.txt"), "FRENCH-RULES");
+        workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fr.prompt.txt"), "FRENCH-RULES");
 
         // Resolved (not hand-built) options, so the conventional prompt files are discovered.
         var options = TranslatorOptionsResolver.Resolve(new CommandLineOptions { BasePath = basePath });

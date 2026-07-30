@@ -3,7 +3,7 @@ namespace VpnHood.Tools.ResourceTranslator.Configuration;
 /// <summary>
 /// Locates and loads the project's extra prompt instructions: one shared file applied to every
 /// language, plus optional per-language additions in a <c>prompts/</c> subfolder of the private
-/// folder (e.g. <c>vh_translator/prompts/fa_prompt.txt</c>), appended after the shared text.
+/// folder (e.g. <c>vh_translator/prompts/fa.prompt.txt</c>), appended after the shared text.
 /// </summary>
 public sealed class ExtraPromptStore
 {
@@ -32,10 +32,10 @@ public sealed class ExtraPromptStore
     /// <summary>Absolute path of the shared prompt file, or null when the project has none.</summary>
     public string? SharedPromptPath { get; }
 
-    /// <summary>Per-language prompt file name for one target language (e.g. <c>fa_prompt.txt</c>).</summary>
+    /// <summary>Per-language prompt file name for one target language (e.g. <c>fa.prompt.txt</c>).</summary>
     public static string GetLanguagePromptFileName(string languageCode)
     {
-        return $"{languageCode}_prompt.txt";
+        return $"{languageCode}.prompt.txt";
     }
 
     /// <summary>
@@ -76,7 +76,7 @@ public sealed class ExtraPromptStore
 
         var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var folder in _promptsFolders.Where(Directory.Exists)) {
-            paths.AddRange(Directory.EnumerateFiles(folder, "*_prompt.txt")
+            paths.AddRange(Directory.EnumerateFiles(folder, "*.prompt.txt")
                 .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
                 .Where(file => seenNames.Add(Path.GetFileName(file))));
         }

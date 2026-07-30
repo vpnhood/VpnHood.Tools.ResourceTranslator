@@ -152,7 +152,7 @@ public sealed class TranslatorOptionsResolverTests
         using var workspace = new TestWorkspace();
         var basePath = workspace.WriteFile("en.json", "{}");
         workspace.WriteFile(Path.Combine("vh_translator", "prompt.txt"), "Shared rules.");
-        workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fr_prompt.txt"), "French rules.");
+        workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fr.prompt.txt"), "French rules.");
 
         var options = TranslatorOptionsResolver.Resolve(new CommandLineOptions { BasePath = basePath });
 
@@ -165,7 +165,7 @@ public sealed class TranslatorOptionsResolverTests
     {
         using var workspace = new TestWorkspace();
         var basePath = workspace.WriteFile("en.json", "{}");
-        workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fa_prompt.txt"), "Persian rules.");
+        workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fa.prompt.txt"), "Persian rules.");
 
         var options = TranslatorOptionsResolver.Resolve(new CommandLineOptions { BasePath = basePath });
 
@@ -180,7 +180,7 @@ public sealed class TranslatorOptionsResolverTests
         using var workspace = new TestWorkspace();
         var basePath = workspace.WriteFile("src/locales/en.json", "{}");
         workspace.WriteFile(Path.Combine("vh_translator", "vhtranslator.json"), "{}");
-        workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fr_prompt.txt"), "French rules.");
+        workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fr.prompt.txt"), "French rules.");
 
         var options = TranslatorOptionsResolver.Resolve(new CommandLineOptions { BasePath = basePath });
 
@@ -193,8 +193,8 @@ public sealed class TranslatorOptionsResolverTests
         using var workspace = new TestWorkspace();
         var basePath = workspace.WriteFile("en.json", "{}");
         var sharedPath = workspace.WriteFile(Path.Combine("vh_translator", "prompt.txt"), "Shared.");
-        var frPath = workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fr_prompt.txt"), "French.");
-        var faPath = workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fa_prompt.txt"), "Persian.");
+        var frPath = workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fr.prompt.txt"), "French.");
+        var faPath = workspace.WriteFile(Path.Combine("vh_translator", "prompts", "fa.prompt.txt"), "Persian.");
 
         var options = TranslatorOptionsResolver.Resolve(new CommandLineOptions { BasePath = basePath });
 

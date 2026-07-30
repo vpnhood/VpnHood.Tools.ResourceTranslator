@@ -114,7 +114,7 @@ i18n/
 Everything else works exactly as with a single file: only changed or missing entries are
 translated, and `--show-changes`, `--rebuild-lang`, and `--ignore-changes` apply per file.
 Bookkeeping goes next to your `vhtranslator.json` when one exists, in a subfolder named after
-the language trees' parent (`vh_translator/watches/i18n/home_watch.json` for `--base i18n/en`),
+the language trees' parent (`vh_translator/watches/i18n/home.watch.json` for `--base i18n/en`),
 so data trees that are consumed verbatim — a Jekyll `_data/` folder, an app bundle — stay clean.
 
 ### Preview first
@@ -190,7 +190,7 @@ vhtranslator --config ci/vhtranslator.json
 ### How it decides what to translate
 
 After each successful run the tool records the source text of every key in
-`vh_translator/watches/<base>_watch.json`. On the next run a key is translated when:
+`vh_translator/watches/<base>.watch.json`. On the next run a key is translated when:
 
 - its **source text changed** since that record, **or**
 - it is **missing or empty** in the target file.
@@ -337,7 +337,7 @@ the next run.
 ### How it decides what to translate
 
 After each successful run the tool records a hash of every page in
-`vh_translator/watches/pages/site_watch.json`. On the next run a page is translated for a language when:
+`vh_translator/watches/pages/site.watch.json`. On the next run a page is translated for a language when:
 
 - its **source content changed** since that record, **or**
 - the **target page is missing** for that language.
@@ -390,15 +390,15 @@ source text is used if there is none. Useful for brand names, URLs, and region-s
 ### Per-language rules
 
 Rules for a single language go into an optional `prompts/` subfolder, one file per target
-language named `{lang}_prompt.txt` — `{lang}` being the locale file stem (or the site language
+language named `{lang}.prompt.txt` — `{lang}` being the locale file stem (or the site language
 code):
 
 ```text
 vh_translator/
   prompt.txt              # shared — sent for every language
   prompts/
-    fa_prompt.txt         # appended after the shared prompt, only when translating fa
-    pt-BR_prompt.txt
+    fa.prompt.txt         # appended after the shared prompt, only when translating fa
+    pt-BR.prompt.txt
 ```
 
 A language without its own file just gets the shared prompt; a `prompts/` folder works with or
@@ -433,7 +433,7 @@ Shared options:
                              also found inside vh_translator/)
   -x, --extra-prompt <path>  Extra instructions appended to the AI prompt
                              (default: vh_translator/prompt.txt; per-language files in
-                             vh_translator/prompts/, e.g. fa_prompt.txt, are appended after it)
+                             vh_translator/prompts/, e.g. fa.prompt.txt, are appended after it)
   -c, --show-changes         List what would be translated and exit (no API key needed)
   -r, --rebuild-lang <code>  Force retranslation of everything for one language
                              (site mode: the pages and all "data" files)

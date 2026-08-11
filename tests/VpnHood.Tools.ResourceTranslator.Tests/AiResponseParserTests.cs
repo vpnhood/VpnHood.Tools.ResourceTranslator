@@ -103,4 +103,31 @@ public sealed class AiResponseParserTests
     {
         Assert.ThrowsExactly<Exception>(() => AiResponseParser.ParseResponse("123"));
     }
+
+    [TestMethod]
+    public void ParseResponse_AcceptsMinimalObject_WithoutEchoedSourceOrLanguages()
+    {
+        // The prompt asks for Key + TranslatedText only; echoing the source back was ~40% of
+        // every response in output tokens, for values the caller already has.
+        var results = AiResponseParser.ParseResponse(
+            """
+            [{ "Key": "GREETING", "TranslatedText": "Bonjour" }]
+            """);
+
+        Assert.AreEqual(1, results.Length);
+        Assert.AreEqual("GREETING", results[0].Key);
+        Assert.AreEqual("Bonjour", results[0].TranslatedText);
+        Assert.IsNull(results[0].SourceText);
+        Assert.IsNull(results[0].SourceLanguage);
+    }
+
+    [TestMethod]
+    public void ParseResponse_StillAcceptsEchoedFields_FromAChattierModel()
+    {
+        // A model that ignores the instruction and echoes everything must not break the run.
+        var results = AiResponseParser.ParseResponse(ArrayJson);
+
+        Assert.AreEqual("Bonjour", results[0].TranslatedText);
+        Assert.AreEqual("Hello", results[0].SourceText);
+    }
 }

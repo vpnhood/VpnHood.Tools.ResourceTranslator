@@ -458,6 +458,22 @@ vhtranslator only:
 | `gpt` | `gpt-4o-mini` |
 | `grok` | `grok-4-latest` |
 
+### How requests are made
+
+Two choices are baked in, because both matter more than they look:
+
+- **Sampling is deterministic** (`temperature 0`). The same source string gets translated in
+  separate batches that cannot see one another, so sampling variance surfaces as one UI label
+  rendered two ways across a site. Determinism removes that source of drift; a project glossary
+  handles the rest — see [Per-language rules](#per-language-rules).
+- **Thinking is off** on Gemini (`thinkingBudget 0`). Translation is a mechanical mapping, not a
+  reasoning task, and thinking tokens bill at the *output* rate — the expensive side of a run.
+
+The response asks for `Key` and `TranslatedText`, nothing else. Earlier versions had the model
+echo the source text and both language codes back, which was roughly 40% of every response in
+output tokens, for values the caller already holds. A response that still includes them parses
+exactly as before, so an older prompt or a chattier model cannot break a run.
+
 ### Exit codes
 
 | Code | Meaning |

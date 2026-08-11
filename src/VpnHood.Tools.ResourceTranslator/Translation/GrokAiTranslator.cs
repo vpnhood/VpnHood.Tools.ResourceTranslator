@@ -22,7 +22,7 @@ internal sealed class GrokAiTranslator(
                 new { role = "system", content = PromptBuilder.BuildSystemPrompt() },
                 new { role = "user", content = prompt }
             },
-            temperature = 0.1,
+            temperature = 0,
             stream = false
         };
 

@@ -21,21 +21,13 @@ public static class PromptBuilder
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };
 
-    private static readonly TranslateResult[] SampleResults = [
-        new() {
-            SourceLanguage = "en",
-            TargetLanguage = "fr",
-            Key = "Key1",
-            SourceText = "SourceText1",
-            TranslatedText = "TranslatedText1"
-        },
-        new() {
-            SourceLanguage = "en",
-            TargetLanguage = "it",
-            Key = "Key2",
-            SourceText = "SourceText2",
-            TranslatedText = "TranslatedText2"
-        }
+    // Two fields, and no more. The caller matches results by Key and already holds the source
+    // text and both language codes, so anything else the model writes is billed at the output
+    // rate and then discarded — echoing the source alone was ~40% of every response. Kept as an
+    // anonymous shape rather than TranslateResult so the optional fields cannot leak back in.
+    private static readonly object[] SampleResults = [
+        new { Key = "Key1", TranslatedText = "TranslatedText1" },
+        new { Key = "Key2", TranslatedText = "TranslatedText2" }
     ];
 
     public static string BuildSystemPrompt()
@@ -54,6 +46,7 @@ public static class PromptBuilder
         sb.AppendLine(options.Prompt);
         sb.AppendLine();
         sb.AppendLine("IMPORTANT: Return ONLY a JSON array (starting with '[' and ending with ']'). Do not wrap it in any other object.");
+        sb.AppendLine("Return exactly one object per item, carrying its Key unchanged, and only the two fields shown below — do not echo the source text or the language codes.");
         sb.AppendLine("Expected output format:");
         sb.AppendLine(JsonSerializer.Serialize(SampleResults, IndentedSerializerOptions));
         sb.AppendLine();

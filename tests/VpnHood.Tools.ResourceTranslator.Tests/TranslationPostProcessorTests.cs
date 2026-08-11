@@ -165,6 +165,44 @@ public sealed class PromptBuilderTests
     }
 
     [TestMethod]
+    public void BuildPrompt_AsksForKeyAndTranslationOnly()
+    {
+        // The example is what a model copies, so the example is what has to be lean: echoing
+        // the source back was ~40% of every response, in the most expensive tokens of a run.
+        var options = PromptBuilder.BuildOptions([
+            new TranslateItem { SourceLanguage = "en", TargetLanguage = "fa", Key = "greeting", Text = "Hello" }
+        ], basePrompt: "Translate.", extraPrompt: null);
+
+        var prompt = PromptBuilder.BuildPrompt(options);
+        var sample = prompt[prompt.IndexOf("Expected output format:", StringComparison.Ordinal)..
+                            prompt.IndexOf("Items to translate:", StringComparison.Ordinal)];
+
+        StringAssert.Contains(sample, "Key");
+        StringAssert.Contains(sample, "TranslatedText");
+        Assert.IsFalse(sample.Contains("SourceText", StringComparison.Ordinal),
+            "the sample response must not ask the model to echo the source text back");
+        Assert.IsFalse(sample.Contains("SourceLanguage", StringComparison.Ordinal),
+            "the sample response must not ask for language codes the caller already holds");
+        StringAssert.Contains(prompt, "do not echo the source text");
+    }
+
+    [TestMethod]
+    public void BuildPrompt_StillSendsSourceTextAndTargetLanguageWithEachItem()
+    {
+        // Only the response was trimmed. Input is the cheap side, and the model needs both of
+        // these to do the job at all.
+        var options = PromptBuilder.BuildOptions([
+            new TranslateItem { SourceLanguage = "en", TargetLanguage = "fa", Key = "greeting", Text = "Hello" }
+        ], basePrompt: "Translate.", extraPrompt: null);
+
+        var items = PromptBuilder.BuildPrompt(options);
+        items = items[items.IndexOf("Items to translate:", StringComparison.Ordinal)..];
+
+        StringAssert.Contains(items, "Hello");
+        StringAssert.Contains(items, "fa");
+    }
+
+    [TestMethod]
     public void BuildOptions_AppendsExtraPromptUnderGuidelinesHeading()
     {
         var options = PromptBuilder.BuildOptions([], "Base prompt.", "Keep VpnHood untranslated.");

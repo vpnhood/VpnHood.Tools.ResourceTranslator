@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace VpnHood.Tools.ResourceTranslator.Configuration;
 
 /// <summary>
@@ -17,7 +19,15 @@ public sealed class ExtraPromptStore
     public const string PromptsFolderName = "prompts";
 
     private readonly IReadOnlyList<string> _promptsFolders;
-    private readonly Dictionary<string, string?> _cache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Concurrent because a store is shared: <see cref="Empty" /> is a process-wide singleton and
+    /// one resolved store is handed to every runner of a folder or site run, so
+    /// <see cref="LoadAsync" /> can be entered from several tasks at once. A plain dictionary
+    /// corrupts under that (observed as an InvalidOperationException from a parallel test run).
+    /// Racing callers may both read the files; that is idempotent, and cheaper than a lock.
+    /// </summary>
+    private readonly ConcurrentDictionary<string, string?> _cache = new(StringComparer.OrdinalIgnoreCase);
 
     public static ExtraPromptStore Empty { get; } = new(null, []);
 

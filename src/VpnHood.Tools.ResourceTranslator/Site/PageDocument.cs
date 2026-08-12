@@ -142,8 +142,9 @@ public sealed partial class PageDocument
         return null;
     }
 
-    /// <summary>Minimal YAML scalar unquoting: the double/single-quoted styles Jekyll pages use.</summary>
-    private static string? UnquoteYaml(string value)
+    /// <summary>Minimal YAML scalar unquoting: the double/single-quoted styles Jekyll pages use.
+    /// Internal so <see cref="Docs.DocDocument" /> shares the exact same YAML dialect.</summary>
+    internal static string? UnquoteYaml(string value)
     {
         if (value.Length == 0)
             return null;
@@ -166,8 +167,9 @@ public sealed partial class PageDocument
         return value;
     }
 
-    /// <summary>Always double-quotes, so translated text can never break YAML syntax.</summary>
-    private static string QuoteYaml(string value)
+    /// <summary>Always double-quotes, so translated text can never break YAML syntax.
+    /// Internal so <see cref="Docs.DocDocument" /> shares the exact same YAML dialect.</summary>
+    internal static string QuoteYaml(string value)
     {
         return "\"" + value
             .Replace("\\", "\\\\", StringComparison.Ordinal)

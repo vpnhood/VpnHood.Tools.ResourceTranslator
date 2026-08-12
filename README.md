@@ -18,14 +18,20 @@ $ vhtranslator site                  # static website (Jekyll-style)
 ✓ fr/free-vpn/index.html: translated.
 ✓ de/free-vpn/index.html: translated.
 Done.
+
+$ vhtranslator docs                  # standalone markdown documents
+✓ posts/fr/what-is-split-tunneling.md: translated.
+✓ posts/de/what-is-split-tunneling.md: translated.
+Done.
 ```
 
-The tool has two modes that share the same engines, configuration file, options, and workflow:
+The tool has three modes that share the same engines, configuration file, options, and workflow:
 
 | Mode | Command | Translates | Safety guarantee |
 | --- | --- | --- | --- |
 | **Resource files** | `vhtranslator` | JSON / Microsoft `.resx` values | Placeholders and HTML tags preserved |
 | **Static website** | `vhtranslator site` | Whole Jekyll-style pages into per-language folders | Every page structurally verified; unverifiable pages are never written |
+| **Markdown documents** | `vhtranslator docs` | Standalone `.md` files (blog posts, app content) into sibling per-language folders | Source and translation are rendered and their element trees compared; unverifiable documents are never written |
 
 Backed by Google Gemini, OpenAI, or Grok. Ships as a .NET tool, so any repository can adopt it
 without vendoring code.
@@ -370,6 +376,58 @@ The marker in a generated page's front matter is what makes automation safe arou
 - When a source page is deleted, its generated counterparts are **pruned automatically** — but
   only files carrying the marker; hand-authored files are never deleted.
 
+## Part 3 — Translating markdown documents (docs)
+
+For long-form content that is neither a key/value resource nor a website: blog posts, in-app
+help, legal summaries. The layout is folder-per-language — the source folder is named after
+its language and every target language becomes a sibling folder:
+
+```text
+posts/
+  en/what-is-split-tunneling.md     # hand-authored
+  fa/what-is-split-tunneling.md     # generated
+  de/what-is-split-tunneling.md     # generated
+```
+
+### Configuration
+
+```jsonc
+{
+  "docs": {
+    "source": "posts/en",              // required: the source-language folder
+    "languages": ["fa", "de"],         // required: each becomes a sibling folder
+    "files": ["**/*.md"],              // default
+    "output": "posts/{lang}/{path}",   // default: sibling of source
+    "sourceLanguage": "en",            // default: the source folder's leaf name
+    "frontMatter": ["title", "description", "image_alt"],  // keys to translate (default)
+    "chunkChars": 10000,               // split longer bodies at paragraph boundaries
+    "maskPatterns": ["\\{[A-Za-z0-9_]+\\}"]  // masked besides code (default)
+  }
+}
+```
+
+### How a document is translated — and verified
+
+1. YAML front matter is split off. Only the `frontMatter` keys are translated; every other
+   line — dates, tags, images — is copied byte for byte.
+2. Fenced code blocks, inline code, and `maskPatterns` matches are replaced with opaque
+   tokens the model must echo back exactly; it can never corrupt what it was never shown.
+3. A body longer than `chunkChars` is split at paragraph boundaries and translated in parts
+   of the same request, so long documents cannot silently exceed a model's output budget.
+4. Markdown has no element tree to compare, so BOTH sides are rendered to HTML with the same
+   pinned renderer and the trees are compared: a dropped heading, broken list, changed link
+   URL, or truncated translation is rejected. A document that cannot be verified after three
+   attempts is **never written** — the previously committed translation stays.
+
+Front matter also carries the per-file controls: `translate: false` opts a document out,
+and `translate_prompt: "..."` adds instructions for that one document — the place to say
+*"legal disclosure — translate literally, never shorten"* without burdening every other file.
+The `auto_translated` marker works exactly as in site mode (never overwrite hand-authored
+targets, never re-ingest generated files, prune when the source is deleted).
+
+Adding a language, previewing with `--show-changes`, adopting existing translations with
+`--ignore-changes`, and `--rebuild-lang` all work exactly as in site mode.
+
 ## Customizing translations
 
 Add project rules via `--extra-prompt`, the `extraPrompt` config key, or by creating
@@ -412,6 +470,7 @@ rules to a whole language.
 - run: dotnet tool restore
 - run: dotnet tool run vhtranslator        # resource files
 - run: dotnet tool run vhtranslator site   # static website
+- run: dotnet tool run vhtranslator docs   # markdown documents
   env:
     GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
@@ -427,6 +486,7 @@ verification is your review.
 ```text
 vhtranslator [options]           Translate resource files (JSON / .resx)
 vhtranslator site [options]      Translate a static website
+vhtranslator docs [options]      Translate standalone markdown documents
 
 Shared options:
       --config <path>        Config file to use (default: nearest vhtranslator.json,

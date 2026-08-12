@@ -1,5 +1,6 @@
 using System.CommandLine;
 using VpnHood.Tools.ResourceTranslator.Configuration;
+using VpnHood.Tools.ResourceTranslator.Docs;
 using VpnHood.Tools.ResourceTranslator.Formats;
 using VpnHood.Tools.ResourceTranslator.Site;
 using VpnHood.Tools.ResourceTranslator.Translation;
@@ -123,8 +124,75 @@ public static class TranslatorCommand
             return await ExecuteSiteAsync(commandLine, cancellationToken);
         });
 
+        var docsCommand = new Command("docs",
+            "Translates a folder of standalone markdown documents (app content, blog posts) " +
+            "into sibling per-language folders. Only documents whose source changed are " +
+            "retranslated; missing target documents are always filled in. Every document is " +
+            "structurally verified against its source (rendered element trees must match) and " +
+            "is never written when verification fails. Configured by the \"docs\" section of " +
+            $"{TranslatorConfig.FileName}.") {
+            configOption,
+            extraPromptOption,
+            showChangesOption,
+            rebuildLangOption,
+            ignoreChangesOption,
+            apiKeyOption,
+            modelOption,
+            engineOption
+        };
+
+        docsCommand.SetAction(async (parseResult, cancellationToken) => {
+            var commandLine = new CommandLineOptions {
+                ConfigPath = parseResult.GetValue(configOption),
+                ExtraPromptPath = parseResult.GetValue(extraPromptOption),
+                ApiKey = parseResult.GetValue(apiKeyOption),
+                Model = parseResult.GetValue(modelOption),
+                Engine = parseResult.GetValue(engineOption),
+                ShowChanges = parseResult.GetValue(showChangesOption),
+                RebuildLang = parseResult.GetValue(rebuildLangOption),
+                RebuildWatch = parseResult.GetValue(ignoreChangesOption)
+            };
+
+            return await ExecuteDocsAsync(commandLine, cancellationToken);
+        });
+
         rootCommand.Subcommands.Add(siteCommand);
+        rootCommand.Subcommands.Add(docsCommand);
         return rootCommand;
+    }
+
+    private static async Task<int> ExecuteDocsAsync(CommandLineOptions commandLine, CancellationToken cancellationToken)
+    {
+        var reporter = new ConsoleTranslationReporter();
+
+        try {
+            var options = DocsOptionsResolver.Resolve(commandLine);
+            if (options.ConfigPath != null)
+                reporter.Info($"Using config: {options.ConfigPath}");
+            foreach (var promptFile in options.ExtraPrompt.GetPromptFilePaths())
+                reporter.Info($"Using prompt: {promptFile}");
+
+            var runner = new DocsTranslationRunner(options, reporter);
+
+            if (commandLine.RebuildWatch)
+                return await runner.RebuildWatchFileAsync(cancellationToken);
+
+            if (commandLine.ShowChanges)
+                return await runner.ShowChangesAsync(cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(commandLine.RebuildLang))
+                return await runner.RebuildLanguageAsync(commandLine.RebuildLang, cancellationToken);
+
+            return await runner.RunAsync(cancellationToken);
+        }
+        catch (TranslatorException ex) {
+            reporter.Warn($"Error: {ex.Message}");
+            return ex.ExitCode;
+        }
+        catch (OperationCanceledException) {
+            reporter.Warn("Cancelled.");
+            return ExitCodes.TranslationFailed;
+        }
     }
 
     private static async Task<int> ExecuteSiteAsync(CommandLineOptions commandLine, CancellationToken cancellationToken)

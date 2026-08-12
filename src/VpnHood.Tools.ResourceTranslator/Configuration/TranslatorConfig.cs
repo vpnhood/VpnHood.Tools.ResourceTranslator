@@ -46,6 +46,10 @@ public sealed record TranslatorConfig
     [JsonPropertyName("site")]
     public Site.SiteConfig? Site { get; init; }
 
+    /// <summary>Settings for the <c>docs</c> command; null when the repo has no docs section.</summary>
+    [JsonPropertyName("docs")]
+    public Docs.DocsConfig? Docs { get; init; }
+
     /// <summary>Directory the config was loaded from; relative paths resolve against it.</summary>
     [JsonIgnore]
     public string BaseDirectory { get; private init; } = Directory.GetCurrentDirectory();

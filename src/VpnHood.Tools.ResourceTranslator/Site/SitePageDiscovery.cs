@@ -20,6 +20,14 @@ public static class SitePageDiscovery
         return Execute(rootPath, pagePatterns, excludePatterns: []);
     }
 
+    /// <summary>The same matcher under an arbitrary root with excludes; the docs pipeline's
+    /// entry point, so both pipelines discover files with identical glob semantics.</summary>
+    public static IReadOnlyList<string> DiscoverUnder(
+        string rootPath, IReadOnlyList<string> includePatterns, IReadOnlyList<string> excludePatterns)
+    {
+        return Execute(rootPath, includePatterns, excludePatterns);
+    }
+
     private static IReadOnlyList<string> Execute(
         string rootPath, IReadOnlyList<string> includePatterns, IReadOnlyList<string> excludePatterns)
     {

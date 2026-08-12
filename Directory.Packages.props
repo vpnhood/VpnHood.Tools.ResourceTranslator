@@ -8,6 +8,7 @@
 	<!-- Runtime dependencies -->
 	<ItemGroup>
 		<PackageVersion Include="AngleSharp" Version="1.5.2" />
+		<PackageVersion Include="Markdig" Version="0.41.0" />
 		<PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.0" />
 		<PackageVersion Include="Mscc.GenerativeAI" Version="3.0.0" />
 		<PackageVersion Include="OpenAI" Version="2.8.0" />

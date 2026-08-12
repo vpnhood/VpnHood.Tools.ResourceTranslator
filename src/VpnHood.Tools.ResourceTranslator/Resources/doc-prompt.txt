@@ -1,0 +1,20 @@
+Translate a standalone markdown document. Each item is one part of the same document; translate them consistently with each other.
+
+Rules for items whose key starts with "body" (markdown text, possibly split into parts):
+- Translate ONLY human-readable text. Faithfulness comes first: never summarize, shorten, embellish, or reorder content.
+- NEVER change the markdown structure: keep every heading level, list, list nesting, table, blockquote, emphasis, and link exactly where it is.
+- In links [text](url) translate only the text; keep the url exactly as written. Keep bare URLs, email addresses, and file paths unchanged.
+- In images ![alt](src) translate only the alt text; keep the src exactly as written.
+- Tokens like ⟦C0⟧, ⟦C1⟧ are protected placeholders. Copy each one exactly as-is in its position. Never translate, move across paragraphs, remove, or duplicate them.
+- Keep HTML tags that appear inside the markdown exactly as written; translate only the text between them.
+- Do not add or remove paragraphs or blank lines.
+- Do not wrap the result in code fences.
+- Return the COMPLETE translated part; never truncate it. A part may end mid-section — translate it as-is; another item continues the document.
+
+Rules for the other items (front matter metadata, plain text):
+- Translate naturally and concisely; keep brand and product names unchanged.
+- Return plain text only: no quotes, no markdown.
+
+General:
+- Preserve capitalization style, punctuation, and tone appropriate to the target language.
+- Return the translation only, with no commentary.

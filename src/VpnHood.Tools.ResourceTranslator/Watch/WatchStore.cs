@@ -149,6 +149,18 @@ public sealed class WatchStore
             "pages", "site", "site");
     }
 
+    /// <summary>
+    /// Watch file for a docs run: keys are document paths relative to the docs source root,
+    /// values are content hashes (whole file, front matter included — a changed per-file
+    /// prompt must retranslate too, or the change would only ever apply to new files).
+    /// </summary>
+    public static WatchStore ForDocsRoot(string rootPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
+        return InWatchesSubfolder(Path.Combine(Path.GetFullPath(rootPath), PrivateFolderName),
+            "docs", "docs", "docs");
+    }
+
     public static string GetPrivateFolderPath(string basePath)
     {
         var baseDir = Path.GetDirectoryName(Path.GetFullPath(basePath))

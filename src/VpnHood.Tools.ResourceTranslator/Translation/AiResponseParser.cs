@@ -30,6 +30,7 @@ public static class AiResponseParser
                     }
 
                     // Single object - wrap it in an array
+                    AcceptTextAsTranslatedText(jsonObject);
                     var singleResult = jsonObject.Deserialize<TranslateResult>(SerializerOptions);
                     if (singleResult != null)
                         return [singleResult];
@@ -61,7 +62,11 @@ public static class AiResponseParser
     private static TranslateResult[] DeserializeArray(JsonArray jsonArray)
     {
         var results = jsonArray
-            .Select(item => item?.Deserialize<TranslateResult>(SerializerOptions))
+            .Select(item => {
+                if (item is JsonObject jsonObject)
+                    AcceptTextAsTranslatedText(jsonObject);
+                return item?.Deserialize<TranslateResult>(SerializerOptions);
+            })
             .Where(result => result != null)
             .Select(result => result!)
             .ToArray();
@@ -70,5 +75,29 @@ public static class AiResponseParser
             throw new Exception("No valid translation results found in array.");
 
         return results;
+    }
+
+    // A model sometimes names one item's translation "Text" while every other item says
+    // "TranslatedText" - gemini-flash-lite did so on the same item five attempts in a row, so a retry
+    // does not cure it. The name is taken as the translation only when the proper one is absent; an
+    // item carrying both keeps what it named. The result still goes through the runner's usual checks.
+    private static void AcceptTextAsTranslatedText(JsonObject jsonObject)
+    {
+        if (FindPropertyName(jsonObject, nameof(TranslateResult.TranslatedText)) != null)
+            return;
+
+        var textName = FindPropertyName(jsonObject, "Text");
+        if (textName == null)
+            return;
+
+        var value = jsonObject[textName];
+        jsonObject.Remove(textName);
+        jsonObject[nameof(TranslateResult.TranslatedText)] = value;
+    }
+
+    private static string? FindPropertyName(JsonObject jsonObject, string name)
+    {
+        return jsonObject.Select(property => property.Key)
+            .FirstOrDefault(key => string.Equals(key, name, StringComparison.OrdinalIgnoreCase));
     }
 }

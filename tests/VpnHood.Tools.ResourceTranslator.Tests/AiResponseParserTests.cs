@@ -130,4 +130,35 @@ public sealed class AiResponseParserTests
         Assert.AreEqual("Bonjour", results[0].TranslatedText);
         Assert.AreEqual("Hello", results[0].SourceText);
     }
+
+    [TestMethod]
+    public void ParseResponse_AcceptsTextForTranslatedText_WhenTheProperNameIsAbsent()
+    {
+        // gemini-flash-lite answered one item of a two-item batch with "Text", five attempts in a
+        // row, while the other item was fine. That name counts as the translation when the proper
+        // one is absent.
+        var results = AiResponseParser.ParseResponse(
+            """
+            [
+              { "Key": "ADD_OR_REMOVE_SERVERS", "TranslatedText": "Server hinzufügen oder entfernen" },
+              { "Key": "REMOTE_ACCESS_HINT_SERVERS", "Text": "Öffne auf deinem Smartphone den Bereich Server." }
+            ]
+            """);
+
+        Assert.AreEqual(2, results.Length);
+        Assert.AreEqual("Server hinzufügen oder entfernen", results[0].TranslatedText);
+        Assert.AreEqual("Öffne auf deinem Smartphone den Bereich Server.", results[1].TranslatedText);
+    }
+
+    [TestMethod]
+    public void ParseResponse_KeepsTranslatedText_WhenTextIsAlsoPresent()
+    {
+        var results = AiResponseParser.ParseResponse(
+            """
+            [{ "Key": "GREETING", "Text": "Hello", "TranslatedText": "Bonjour" }]
+            """);
+
+        Assert.AreEqual(1, results.Length);
+        Assert.AreEqual("Bonjour", results[0].TranslatedText);
+    }
 }

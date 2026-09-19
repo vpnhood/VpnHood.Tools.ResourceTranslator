@@ -22,7 +22,6 @@
 		<PackageReference Include="Mscc.GenerativeAI" />
 		<PackageReference Include="OpenAI" />
 		<PackageReference Include="System.CommandLine" />
-		<PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
 	</ItemGroup>
 
 	<!-- The default prompt templates travel with the tool. -->
@@ -41,6 +40,7 @@
 	<!-- Files referenced by the package metadata in Directory.Build.props. -->
 	<ItemGroup>
 		<None Include="..\..\README.md" Pack="true" PackagePath="\" Visible="false" />
+		<None Include="..\..\VpnHood.png" Pack="true" PackagePath="\" Visible="false" />
 	</ItemGroup>
 
 	<ItemGroup>

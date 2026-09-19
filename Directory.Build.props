@@ -39,10 +39,14 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageLicenseExpression>LGPL-2.1-only</PackageLicenseExpression>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageIcon>VpnHood.png</PackageIcon>
 		<PackageTags>i18n;l10n;localization;translation;ai;gemini;openai;resx;json;dotnet-tool</PackageTags>
 	</PropertyGroup>
 
-	<!-- Reproducible builds: embed source metadata so symbols resolve from the repo. -->
+	<!-- Reproducible builds: embed source metadata so symbols resolve from the repo.
+	     SourceLink itself comes from the SDK - it has shipped in it since .NET 8, and the
+	     Microsoft.SourceLink.GitHub package pulled in a Microsoft.Build.Tasks.Git 8.0.0
+	     with a published advisory and no patched 8.0.x to move to. -->
 	<PropertyGroup>
 		<IncludeSymbols>true</IncludeSymbols>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>

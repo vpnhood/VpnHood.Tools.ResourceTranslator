@@ -25,18 +25,11 @@ public sealed class ResxResourceFormatTests
         </root>
         """;
 
-    private static string CreateTempDir()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "vhresx_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        return dir;
-    }
-
     [TestMethod]
     public void TryLoad_ReturnsOnlyStringEntriesInOrder()
     {
-        var dir = CreateTempDir();
-        var path = Path.Combine(dir, "Strings.resx");
+        using var workspace = new TestWorkspace();
+        var path = Path.Combine(workspace.Path, "Strings.resx");
         File.WriteAllText(path, SampleResx);
 
         var format = new ResxResourceFormat();
@@ -68,7 +61,8 @@ public sealed class ResxResourceFormatTests
     public void GetLocaleFilePath_BuildsCultureSpecificName()
     {
         var format = new ResxResourceFormat();
-        var basePath = Path.Combine(CreateTempDir(), "Strings.resx");
+        using var workspace = new TestWorkspace();
+        var basePath = Path.Combine(workspace.Path, "Strings.resx");
         var result = format.GetLocaleFilePath(basePath, "es");
         Assert.AreEqual("Strings.es.resx", Path.GetFileName(result));
     }
@@ -76,7 +70,8 @@ public sealed class ResxResourceFormatTests
     [TestMethod]
     public void FindSiblingLocaleFiles_FindsCulturesAndExcludesBase()
     {
-        var dir = CreateTempDir();
+        using var workspace = new TestWorkspace();
+        var dir = workspace.Path;
         File.WriteAllText(Path.Combine(dir, "Strings.resx"), SampleResx);
         File.WriteAllText(Path.Combine(dir, "Strings.fr.resx"), SampleResx);
         File.WriteAllText(Path.Combine(dir, "Strings.de.resx"), SampleResx);
@@ -95,7 +90,8 @@ public sealed class ResxResourceFormatTests
     [TestMethod]
     public async Task SaveAsync_RoundTripsPreservesNonStringDataAndComments()
     {
-        var dir = CreateTempDir();
+        using var workspace = new TestWorkspace();
+        var dir = workspace.Path;
         var basePath = Path.Combine(dir, "Strings.resx");
         await File.WriteAllTextAsync(basePath, SampleResx);
 
@@ -133,7 +129,8 @@ public sealed class ResxResourceFormatTests
     [TestMethod]
     public async Task SaveAsync_CreatesValidResxWhenTargetMissing()
     {
-        var dir = CreateTempDir();
+        using var workspace = new TestWorkspace();
+        var dir = workspace.Path;
         var format = new ResxResourceFormat();
         var targetPath = Path.Combine(dir, "Strings.it.resx");
 

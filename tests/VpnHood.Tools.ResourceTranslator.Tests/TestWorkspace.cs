@@ -5,7 +5,7 @@ public sealed class TestWorkspace : IDisposable
 {
     public TestWorkspace()
     {
-        Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "vhtranslator-tests", Guid.NewGuid().ToString("N"));
+        Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "vh", "vhtranslator-tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(Path);
     }
 

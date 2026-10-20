@@ -6,7 +6,7 @@ and formatting intact.
 
 [![NuGet](https://img.shields.io/nuget/v/VpnHood.Tools.ResourceTranslator.svg)](https://www.nuget.org/packages/VpnHood.Tools.ResourceTranslator)
 [![Build](https://github.com/vpnhood/VpnHood.Tools.ResourceTranslator/actions/workflows/build.yml/badge.svg)](https://github.com/vpnhood/VpnHood.Tools.ResourceTranslator/actions/workflows/build.yml)
-[![License](https://img.shields.io/badge/license-LGPL--2.1-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-LGPL--2.1-blue.svg)](https://github.com/vpnhood/VpnHood.Tools.ResourceTranslator/blob/main/LICENSE)
 
 ```console
 $ vhtranslator                       # resource files (JSON / .resx)
@@ -581,8 +581,8 @@ dotnet build
 dotnet test
 ```
 
-See [CLAUDE.md](CLAUDE.md) for repository layout, architecture notes, and the release process.
+See [CLAUDE.md](https://github.com/vpnhood/VpnHood.Tools.ResourceTranslator/blob/main/CLAUDE.md) for repository layout, architecture notes, and the release process.
 
 ## License
 
-Open source (LGPL) — see [LICENSE](LICENSE).
+Open source (LGPL) — see [LICENSE](https://github.com/vpnhood/VpnHood.Tools.ResourceTranslator/blob/main/LICENSE).

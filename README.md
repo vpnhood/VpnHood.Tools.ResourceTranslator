@@ -59,7 +59,7 @@ site mode refuses to write any page it cannot prove structurally intact.
 
 ## Install
 
-Requires the .NET 10 SDK or later.
+Requires the .NET 11 SDK or later.
 
 ```bash
 # Pin it per repository (recommended — everyone and CI get the same version)
